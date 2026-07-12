@@ -526,15 +526,15 @@ fn prompt_for_event(action: &str, project: &Value) -> String {
     let selected_story_element_id = project.get("selectedstoryelementid")
         .and_then(|v| v.as_str())
         .unwrap_or("");
-    
+
     format!(
-        r#"Devuelve SOLO JSON válido. No uses markdown. No expliques nada fuera del JSON.
+        r##"Devuelve SOLO JSON válido. No uses markdown. No expliques nada fuera del JSON.
 
 Estás trabajando para Cadiz12 en la sección de eventos.
 Acción solicitada: {action}
 
 Reglas importantes:
-- Si se proporciona un story_element_id seleccionado, el evento DEBE usar ese story_element_id en su campo story_element_id.
+- Si se proporciona un story_element_id seleccionado, el evento DEBE usar ese story_element_id.
 - El evento debe ser coherente con el story element seleccionado.
 
 Contexto del proyecto:
@@ -565,11 +565,12 @@ Devuelve este formato exacto:
   "warnings": []
 }}
 
-Si la acción es proponer textos o decisiones, sigue devolviendo un evento completo para que la UI lo pueda aplicar sin lógica extra."#,
+Si la acción es proponer textos o decisiones, sigue devolviendo un evento completo para que la UI lo pueda aplicar sin lógica extra."##,
         action = action,
         project_context = serde_json::to_string_pretty(project).unwrap_or_else(|_| "{}".to_string()),
         selected_story_element_id = selected_story_element_id
     )
+}
 
 fn prompt_for_review(action: &str, project: &Value) -> String {
     format!(
