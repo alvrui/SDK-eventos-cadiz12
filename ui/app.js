@@ -527,9 +527,13 @@ async function loadGenericCatalog() {
         }
         
         state.catalogs.generic = allElements;
+        console.log('[DEBUG] Catálogo genérico cargado:', allElements.length, 'elementos');
+        if (allElements.length > 0) {
+            console.log('[DEBUG] Primer elemento:', allElements[0]);
+        }
         return allElements;
     } catch (error) {
-        console.error('Error cargando catálogo genérico:', error);
+        console.error('[ERROR] Error cargando catálogo genérico:', error);
         return [];
     }
 }
