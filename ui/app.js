@@ -322,17 +322,27 @@ function renderAgents() {
 
     if (!state.agents.length) {
         container.className = "agent-overview empty-state";
-        container.innerHTML = "No se pudieron cargar agentes.";
+        container.innerHTML = `<div>
+            <p>No se pudieron cargar agentes desde <code>secretario.py</code>.</p>
+            <p style="font-size: 0.8em; margin-top: 0.5em; color: var(--text-muted);">
+                Verifica que el servicio esté corriendo en <code>127.0.0.1:8000</code>
+            </p>
+            <button onclick="loadAgents()" class="btn btn-ghost btn-small" style="margin-top: 0.5em;">
+                Reintentar
+            </button>
+        </div>`;
         return;
     }
 
     container.className = "agent-overview";
-    container.innerHTML = state.agents.map((agent) => `
+    container.innerHTML = `<div style="display: flex; flex-wrap: wrap; gap: 0.5em;">
+        ${state.agents.map((agent) => `
         <div class="agent-pill">
             <div class="agent-pill-name">${escapeHtml(agent.nombre || agent.name || "-")}</div>
             <div class="agent-pill-id">${escapeHtml(agent.agent_id || agent.id || "")}</div>
         </div>
-    `).join("");
+    `).join("")}
+    </div>`;
 }
 
 async function loadProject() {
