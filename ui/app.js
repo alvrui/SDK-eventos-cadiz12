@@ -527,6 +527,8 @@ async function loadGenericCatalog() {
         }
         
         state.catalogs.generic = allElements;
+        console.log('Catálogo genérico cargado:', allElements.length, 'elementos');
+        console.log('Primeros 3 elementos:', allElements.slice(0, 3));
         return allElements;
     } catch (error) {
         console.error('Error cargando catálogo genérico:', error);
@@ -535,7 +537,8 @@ async function loadGenericCatalog() {
 }
 
 function parseCSV(csv, type) {
-    const lines = csv.split('\n');
+    const lines = csv.split('
+');
     if (lines.length < 2) return [];
     
     const headers = lines[0].split(',').map(h => h.trim());
@@ -545,7 +548,8 @@ function parseCSV(csv, type) {
         const line = lines[i].trim();
         if (!line) continue;
         
-        const values = line.split(',').map(v => v.trim());
+        // Usar un parser CSV más robusto que maneje comillas
+        const values = parseCSVLine(line);
         const element = { type: type };
         
         for (let j = 0; j < Math.min(headers.length, values.length); j++) {
@@ -556,6 +560,28 @@ function parseCSV(csv, type) {
     }
     
     return elements;
+}
+
+function parseCSVLine(line) {
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    values.push(current.trim());
+    return values;
 }
 
 function renderCatalogSelector() {
@@ -594,11 +620,16 @@ function renderCatalogStoryElements() {
     // Filtrar por tipología
     const typeFilter = state.selectedStoryElementType;
     if (typeFilter !== 'All') {
-        elements = elements.filter(el => 
-            (el.type && el.type === typeFilter) || 
-            (el.category && el.category === typeFilter) ||
-            (el.subtype && el.subtype === typeFilter)
-        );
+        elements = elements.filter(el => {
+            // Para elementos del catálogo (CSV), el type está en el parámetro type que pasamos
+            if (el.type === typeFilter) return true;
+            // También verificar category y subtype
+            if (el.category === typeFilter) return true;
+            if (el.subtype === typeFilter) return true;
+            // Para elementos del proyecto, verificar el campo type
+            if (el.type && el.type === typeFilter) return true;
+            return false;
+        });
     }
     
     if (!elements.length) {
