@@ -25,6 +25,18 @@
             </div>
 
             <div class="sidebar-section">
+                <label class="label" for="selectedAgent">Agente para IA</label>
+                <div class="field">
+                    <select id="selectedAgent" class="form-select">
+                        <option value="">-- Selecciona un agente --</option>
+                    </select>
+                </div>
+                <div class="hint-card" style="margin-top: 0.5em; font-size: 0.8em;">
+                    <p>Este agente se usará para todas las acciones de IA en el proyecto.</p>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
                 <label class="label" for="globalActions">Acciones globales</label>
                 <div id="globalActions" class="action-stack">
                     <button id="btnLoadProject" class="btn btn-secondary" type="button">Recargar proyecto</button>
@@ -72,6 +84,7 @@
                 <button class="tab" data-tab="story-elements" type="button">Story Elements</button>
                 <button class="tab" data-tab="events" type="button">Eventos</button>
                 <button class="tab" data-tab="review" type="button">Revisión</button>
+                <button class="tab" data-tab="agents" type="button">Agentes</button>
                 <button class="tab" data-tab="raw-json" type="button">JSON</button>
             </nav>
 
@@ -625,6 +638,70 @@
                             <button class="btn btn-secondary workflow-btn" data-ai-section="review" data-ai-action="review_historical_alignment" type="button">
                                 Revisar alineación histórica
                             </button>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="tab-agents" class="tab-panel">
+                <div class="panel-grid">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Gestión de Agentes Mistral</h3>
+                                <p>Configura y administra los agentes disponibles para interactuar con Mistral.</p>
+                            </div>
+                            <div class="panel-actions">
+                                <button id="btnRefreshAgents" class="btn btn-secondary btn-small" type="button">🔄 Refrescar</button>
+                                <button id="btnAddAgent" class="btn btn-primary btn-small" type="button">+ Añadir Agente</button>
+                            </div>
+                        </div>
+                        
+                        <div class="toolbar-row">
+                            <div class="toolbar-field" style="flex: 1;">
+                                <label for="agentSearch">Buscar agente</label>
+                                <input id="agentSearch" type="text" placeholder="Filtrar por nombre o ID..." />
+                            </div>
+                        </div>
+                        
+                        <div id="agentsList" class="card-list empty-state">
+                            Cargando agentes desde secretario.py...
+                        </div>
+                    </section>
+                    
+                    <section class="panel panel-side">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Agente Seleccionado</h3>
+                                <p>Detalles y acciones del agente</p>
+                            </div>
+                        </div>
+                        
+                        <div class="form-grid two-cols">
+                            <div class="field">
+                                <label for="agentName">Nombre</label>
+                                <input id="agentName" type="text" placeholder="Nombre del agente" />
+                            </div>
+                            <div class="field">
+                                <label for="agentId">Agent ID</label>
+                                <input id="agentId" type="text" placeholder="ID del agente (ej: ag_019f...)" />
+                            </div>
+                            <div class="field field-full">
+                                <label for="agentConversationId">Conversation ID (opcional)</label>
+                                <input id="agentConversationId" type="text" placeholder="ID de conversación existente" />
+                            </div>
+                        </div>
+                        
+                        <div class="workflow-group">
+                            <button id="btnSaveAgent" class="btn btn-primary" type="button" disabled>💾 Guardar Agente</button>
+                            <button id="btnDeleteAgent" class="btn btn-danger" type="button" disabled>🗑️ Eliminar Agente</button>
+                            <button id="btnResetConversation" class="btn btn-secondary" type="button" disabled>🔄 Reset Conversación</button>
+                        </div>
+                        
+                        <div class="hint-card">
+                            <h4>Información</h4>
+                            <p>Los agentes se guardan en <code>.env_agentes</code> y se sincronizan con el servicio <code>secretario.py</code>.</p>
+                            <p>El Agent ID debe ser un ID válido de Mistral (ej: <code>ag_019f34c158827241b3bfe6d6a396cd89</code>)</p>
                         </div>
                     </section>
                 </div>
