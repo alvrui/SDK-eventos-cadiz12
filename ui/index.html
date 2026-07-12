@@ -74,7 +74,6 @@
                 <button class="tab" data-tab="narrative" type="button">Narrativas</button>
                 <button class="tab" data-tab="characters" type="button">Personajes</button>
                 <button class="tab" data-tab="plots" type="button">Tramas</button>
-                <button class="tab" data-tab="story-elements" type="button">Story Elements</button>
                 <button class="tab" data-tab="events" type="button">Eventos</button>
                 <button class="tab" data-tab="review" type="button">Revisión</button>
                 <button class="tab" data-tab="agents" type="button">Agentes</button>
@@ -350,6 +349,7 @@
                   <div class="toolbar-field" style="flex: 1;">
                     <label for="catalogSelect">Catálogo activo</label>
                     <select id="catalogSelect" class="form-select">
+                      <option value="project">Story Elements del Proyecto</option>
                       <option value="generic">Catálogo Genérico (CSV)</option>
                       <option value="">-- Catálogos Generados por IA --</option>
                     </select>
@@ -377,6 +377,19 @@
                 
                 <div id="catalogStoryElementsList" class="card-list empty-state">
                   Selecciona un catálogo para ver los story elements disponibles.
+                </div>
+                
+                <div class="panel-actions" style="margin-top: 1em; padding-top: 1em; border-top: 1px solid var(--border);">
+                  <button id="btnAddStoryElement" class="btn btn-primary btn-small" type="button">+ Añadir elemento</button>
+                  <button id="btnAiStoryPropose" class="btn btn-secondary btn-small" type="button">IA: proponer lote</button>
+                </div>
+                
+                <div class="workflow-group" style="margin-top: 1em;">
+                  <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose" type="button">Proponer lote general</button>
+                  <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose_antagonists" type="button">Proponer antagonistas</button>
+                  <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose_procedures" type="button">Proponer procedures</button>
+                  <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose_resources" type="button">Proponer dramatic resources</button>
+                  <button id="btnAiStoryEnrichSelected" class="btn btn-secondary btn-small" type="button">Enriquecer seleccionados</button>
                 </div>
               </div>
               
@@ -471,101 +484,6 @@
                   </div>
                 </section>
               </div>
-            </section>
-
-            <section id="tab-story-elements" class="tab-panel">
-                <div class="panel-grid">
-                    <section class="panel">
-                        <div class="panel-header">
-                            <div>
-                                <h3>Story Elements</h3>
-                                <p>Elementos narrativos tipados y editables para el lore de Cadiz12.</p>
-                            </div>
-                            <div class="panel-actions">
-                                <button id="btnAddStoryElement" class="btn btn-primary" type="button">Añadir elemento</button>
-                                <button id="btnAiStoryPropose" class="btn btn-secondary" type="button">IA: proponer lote</button>
-                            </div>
-                        </div>
-
-                        <div class="toolbar-row">
-                            <div class="toolbar-field">
-                                <label for="storyFilterType">Filtrar por tipo</label>
-                                <select id="storyFilterType">
-                                    <option value="All">Todos</option>
-                                    <option value="Theme">Theme</option>
-                                    <option value="Scenario">Scenario</option>
-                                    <option value="Procedure">Procedure</option>
-                                    <option value="Antagonist">Antagonist</option>
-                                    <option value="Secondary">Secondary</option>
-                                    <option value="Protagonist">Protagonist</option>
-                                    <option value="DramaticResource">DramaticResource</option>
-                                </select>
-                            </div>
-
-                            <div class="toolbar-field">
-                                <label for="storyPresetType">Preset rápido</label>
-                                <select id="storyPresetType">
-                                    <option value="">Selecciona preset</option>
-                                    <option value="Theme">Theme</option>
-                                    <option value="Scenario">Scenario</option>
-                                    <option value="Procedure">Procedure</option>
-                                    <option value="Antagonist">Antagonist</option>
-                                    <option value="Secondary">Secondary</option>
-                                    <option value="Protagonist">Protagonist</option>
-                                    <option value="DramaticResource">DramaticResource</option>
-                                </select>
-                            </div>
-
-                            <div class="toolbar-actions">
-                                <button id="btnAddPresetStoryElement" class="btn btn-ghost" type="button">Crear desde preset</button>
-                            </div>
-                        </div>
-
-                        <div id="storyElementsList" class="card-list empty-state">
-                            No hay story elements todavía.
-                        </div>
-                    </section>
-
-                    <section class="panel panel-side">
-                        <div class="panel-header">
-                            <div>
-                                <h3>Workflow story elements</h3>
-                                <p>Usa los tipos definidos para Cadiz12.</p>
-                            </div>
-                        </div>
-
-                        <div class="workflow-group">
-                            <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose" type="button">
-                                Proponer lote general
-                            </button>
-                            <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose_antagonists" type="button">
-                                Proponer antagonistas
-                            </button>
-                            <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose_procedures" type="button">
-                                Proponer procedures
-                            </button>
-                            <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose_resources" type="button">
-                                Proponer dramatic resources
-                            </button>
-                            <button id="btnAiStoryEnrichSelected" class="btn btn-secondary" type="button">
-                                Enriquecer seleccionados
-                            </button>
-                        </div>
-
-                        <div class="hint-card">
-                            <h4>Tipologías activas</h4>
-                            <ul class="compact-list">
-                                <li>Theme</li>
-                                <li>Scenario</li>
-                                <li>Procedure</li>
-                                <li>Antagonist</li>
-                                <li>Secondary</li>
-                                <li>Protagonist</li>
-                                <li>DramaticResource</li>
-                            </ul>
-                        </div>
-                    </section>
-                </div>
             </section>
 
             <section id="tab-events" class="tab-panel">
@@ -764,53 +682,6 @@
             </section>
         </main>
     </div>
-
-    <template id="storyElementCardTemplate">
-        <article class="entity-card story-card">
-            <div class="entity-card-header">
-                <div class="entity-card-title-group">
-                    <input class="story-id-input subtle-input" type="text" placeholder="id" />
-                    <input class="story-label-input title-input" type="text" placeholder="Label del story element" />
-                </div>
-                <div class="entity-card-actions">
-                    <label class="checkbox-inline">
-                        <input class="story-selected-input" type="checkbox" />
-                        <span>Seleccionar</span>
-                    </label>
-                    <button class="btn btn-danger btn-small story-remove-btn" type="button">Eliminar</button>
-                </div>
-            </div>
-
-            <div class="form-grid two-cols compact-grid">
-                <div class="field">
-                    <label>Tipo</label>
-                    <select class="story-type-input">
-                        <option value="Theme">Theme</option>
-                        <option value="Scenario">Scenario</option>
-                        <option value="Procedure">Procedure</option>
-                        <option value="Antagonist">Antagonist</option>
-                        <option value="Secondary">Secondary</option>
-                        <option value="Protagonist">Protagonist</option>
-                        <option value="DramaticResource">DramaticResource</option>
-                    </select>
-                </div>
-
-                <div class="field">
-                    <label>Tono</label>
-                    <input class="story-tone-input" type="text" placeholder="Ambiguous, Tense, Political..." />
-                </div>
-
-                <div class="field field-full">
-                    <label>Descripción</label>
-                    <textarea class="story-description-input" rows="5" placeholder="Descripción funcional del elemento narrativo"></textarea>
-                </div>
-            </div>
-
-            <div class="inline-actions">
-                <button class="btn btn-ghost btn-small story-to-event-btn" type="button">Usar para evento</button>
-            </div>
-        </article>
-    </template>
 
     <template id="eventCardTemplate">
         <article class="entity-card event-card">

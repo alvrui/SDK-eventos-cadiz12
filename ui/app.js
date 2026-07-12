@@ -586,17 +586,26 @@ function renderCatalogStoryElements() {
     } else if (state.selectedCatalog.startsWith('generated_')) {
         const index = parseInt(state.selectedCatalog.replace('generated_', ''));
         elements = state.catalogs.generated[index]?.elements || [];
+    } else if (state.selectedCatalog === 'project') {
+        // Mostrar los story elements del proyecto
+        elements = state.project.storyelements || [];
     }
     
     // Filtrar por tipología
     const typeFilter = state.selectedStoryElementType;
     if (typeFilter !== 'All') {
-        elements = elements.filter(el => el.type === typeFilter.toLowerCase() || el.category === typeFilter);
+        elements = elements.filter(el => 
+            (el.type && el.type === typeFilter) || 
+            (el.category && el.category === typeFilter) ||
+            (el.subtype && el.subtype === typeFilter)
+        );
     }
     
     if (!elements.length) {
         container.className = 'card-list empty-state';
-        container.innerHTML = 'No hay story elements para este catálogo y filtro.';
+        container.innerHTML = state.selectedCatalog === 'project' 
+            ? 'No hay story elements en el proyecto. Añade uno usando el botón + Añadir elemento.'
+            : 'No hay story elements para este catálogo y filtro.';
         return;
     }
     
@@ -605,7 +614,9 @@ function renderCatalogStoryElements() {
         const isHighlighted = state.highlightedStoryElements.includes(element.id);
         const highlightClass = isHighlighted ? 'highlighted' : '';
         
-        return `
+        // Para elementos del catálogo (CSV)
+        if (element.spanish_name || element.english_name) {
+            return `
             <article class="entity-card story-card ${highlightClass}" data-element-id="${element.id || ''}">
                 <div class="entity-card-header">
                     <div class="entity-card-title-group">
@@ -629,7 +640,64 @@ function renderCatalogStoryElements() {
                 </div>
             </article>
         `;
+        }
+        // Para elementos del proyecto (creados manualmente)
+        else {
+            return `
+            <article class="entity-card story-card ${highlightClass}" data-element-id="${element.id || ''}">
+                <div class="entity-card-header">
+                    <div class="entity-card-title-group">
+                        <input class="story-id-input subtle-input" type="text" value="${escapeHtml(element.id || '')}" placeholder="id" />
+                        <input class="story-label-input title-input" type="text" value="${escapeHtml(element.label || '')}" placeholder="Label del story element" />
+                    </div>
+                    <div class="entity-card-actions">
+                        <label class="checkbox-inline">
+                            <input class="story-selected-input" type="checkbox" ${element.selected ? 'checked' : ''} />
+                            <span>Seleccionar</span>
+                        </label>
+                        <button class="btn btn-danger btn-small story-remove-btn" type="button">Eliminar</button>
+                    </div>
+                </div>
+
+                <div class="form-grid two-cols compact-grid">
+                    <div class="field">
+                        <label>Tipo</label>
+                        <select class="story-type-input">
+                            <option value="Theme" ${element.type === 'Theme' ? 'selected' : ''}>Theme</option>
+                            <option value="Scenario" ${element.type === 'Scenario' ? 'selected' : ''}>Scenario</option>
+                            <option value="Procedure" ${element.type === 'Procedure' ? 'selected' : ''}>Procedure</option>
+                            <option value="Antagonist" ${element.type === 'Antagonist' ? 'selected' : ''}>Antagonist</option>
+                            <option value="Secondary" ${element.type === 'Secondary' ? 'selected' : ''}>Secondary</option>
+                            <option value="Protagonist" ${element.type === 'Protagonist' ? 'selected' : ''}>Protagonist</option>
+                            <option value="DramaticResource" ${element.type === 'DramaticResource' ? 'selected' : ''}>DramaticResource</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label>Tono</label>
+                        <input class="story-tone-input" type="text" value="${escapeHtml(element.tone || '')}" placeholder="Ambiguous, Tense, Political..." />
+                    </div>
+
+                    <div class="field field-full">
+                        <label>Descripción</label>
+                        <textarea class="story-description-input" rows="5" placeholder="Descripción funcional del elemento narrativo">${escapeHtml(element.description || '')}</textarea>
+                    </div>
+                </div>
+
+                <div class="inline-actions">
+                    <button class="btn btn-ghost btn-small story-to-event-btn" type="button">Usar para evento</button>
+                </div>
+            </article>
+        `;
+        }
     }).join('');
+    
+    // Añadir binding para los botones de los elementos del proyecto
+    if (state.selectedCatalog === 'project') {
+        setTimeout(() => {
+            bindStoryElementCards();
+        }, 50);
+    }
 }
 
 async function generateAdaptedCatalog() {
@@ -973,6 +1041,57 @@ Devuelve SOLO JSON con el formato: {"valid": true/false, "issues": [...], "sugge
     } catch (error) {
         setStatus(`Error validando: ${error.message}`, 'error');
     }
+}
+
+// ============================================
+// FUNCIONES PARA STORY ELEMENTS (MOVIDAS A CATÁLOGOS)
+// ============================================
+
+function createEmptyStoryElement(type = "Theme") {
+    const activeNarrative = (state.project.narratives || []).find(n => n.id === state.activeNarrativeId);
+    const defaultTone = activeNarrative?.tone || state.project.projectMeta?.tone || "Ambiguous";
+    return {
+        id: generateId("story"),
+        type,
+        label: "",
+        description: "",
+        tone: defaultTone,
+        selected: false
+    };
+}
+
+function syncStoryElementsFromDom() {
+    const cards = document.querySelectorAll("#catalogStoryElementsList .story-card");
+    const domMap = new Map();
+
+    cards.forEach((card) => {
+        const oldId = card.dataset.elementId;
+        const story = {
+            id: card.querySelector(".story-id-input").value.trim() || generateId("story"),
+            label: card.querySelector(".story-label-input").value.trim(),
+            type: card.querySelector(".story-type-input").value,
+            tone: card.querySelector(".story-tone-input").value.trim(),
+            description: card.querySelector(".story-description-input").value.trim(),
+            selected: card.querySelector(".story-selected-input").checked
+        };
+        domMap.set(oldId, story);
+    });
+
+    state.project.storyelements = state.project.storyelements
+        .map((item) => domMap.get(item.id) || item);
+
+    renderProjectMeta();
+    renderRawJson();
+}
+
+function addStoryElement(type = "Theme") {
+    syncProjectFromForms();
+    state.project.storyelements.push(createEmptyStoryElement(type));
+    state.selectedCatalog = 'project';
+    renderCatalogStoryElements();
+    renderProjectMeta();
+    renderRawJson();
+    setStatus("Story element añadido.", "success");
 }
 
 async function loadProject() {
@@ -2334,6 +2453,37 @@ function bindAgents() {
     const btnHighlightRecommended = document.getElementById('btnHighlightRecommended');
     if (btnHighlightRecommended) {
         btnHighlightRecommended.addEventListener('click', highlightRecommendedElements);
+    }
+    
+    // Binding para botones de Story Elements (ahora en panel de Catálogos)
+    const btnAddStoryElementInCatalog = document.getElementById('btnAddStoryElement');
+    if (btnAddStoryElementInCatalog) {
+        btnAddStoryElementInCatalog.addEventListener('click', () => {
+            state.selectedCatalog = 'project';
+            renderCatalogStoryElements();
+            addStoryElement('Theme');
+        });
+    }
+    
+    const btnAiStoryProposeInCatalog = document.getElementById('btnAiStoryPropose');
+    if (btnAiStoryProposeInCatalog) {
+        btnAiStoryProposeInCatalog.addEventListener('click', () => {
+            state.selectedCatalog = 'project';
+            renderCatalogStoryElements();
+            runAi('story-elements', 'propose');
+        });
+    }
+    
+    const btnAiStoryEnrichSelectedInCatalog = document.getElementById('btnAiStoryEnrichSelected');
+    if (btnAiStoryEnrichSelectedInCatalog) {
+        btnAiStoryEnrichSelectedInCatalog.addEventListener('click', () => {
+            const hasSelected = state.project.storyelements.some((item) => item.selected);
+            if (!hasSelected) {
+                setStatus('Selecciona al menos un story element para enriquecer.', 'error');
+                return;
+            }
+            runAi('story-elements', 'enrich_selected');
+        });
     }
 }
 
