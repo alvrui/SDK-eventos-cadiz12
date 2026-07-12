@@ -1650,6 +1650,12 @@ async function bootstrap() {
   }
 
   try {
+    await loadAgents();
+  } catch (err) {
+    console.error('[bootstrap] loadAgents failed', err);
+  }
+
+  try {
     bindTabs();
   } catch (err) {
     console.error('[bootstrap] bindTabs failed', err);
