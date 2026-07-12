@@ -515,7 +515,7 @@ async function loadGenericCatalog() {
         
         for (const file of catalogFiles) {
             try {
-                const response = await fetch(`/projectdata/catalogs/${file}.csv`);
+                const response = await fetch(`http://localhost:7880/projectdata/catalogs/${file}.csv`);
                 if (response.ok) {
                     const csv = await response.text();
                     const elements = parseCSV(csv, file);
