@@ -661,6 +661,19 @@ fn main() {
                 let response = text_response(200, APP_CSS, "text/css; charset=UTF-8");
                 let _ = request.respond(response);
             }
+            (Method::Get, path) if path.starts_with("/projectdata/catalogs/") => {
+                let file_path = Path::new("projectdata").join(path.trim_start_matches("/"));
+                if file_path.exists() {
+                    if let Ok(file_content) = fs::read_to_string(&file_path) {
+                        let response = text_response(200, &file_content, "text/csv; charset=UTF-8");
+                        let _ = request.respond(response);
+                    } else {
+                        let _ = request.respond(text_response(404, "File not found", "text/plain"));
+                    }
+                } else {
+                    let _ = request.respond(text_response(404, "File not found", "text/plain"));
+                }
+            }
             (Method::Get, "/api/project") => {
                 let response = json_response(load_project_json());
                 let _ = request.respond(response);

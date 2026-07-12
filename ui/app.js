@@ -1048,7 +1048,7 @@ function renderAll() {
   renderProjectForm();
   renderNarrativeList();
   renderNarrativeEditor();
-  renderStoryElements();
+  
   renderCharacterList();
   renderCharacterEditor();
   renderPlotList();
@@ -1446,80 +1446,7 @@ function createEmptyEvent(storyElementId = "") {
     };
 }
 
-function getFilteredStoryElements() {
-    if (state.storyFilterType === "All") return state.project.storyelements;
-    return state.project.storyelements.filter((item) => item.type === state.storyFilterType);
-}
 
-function renderStoryElements() {
-    const container = $("#storyElementsList");
-    const filtered = getFilteredStoryElements();
-
-    if (!filtered.length) {
-        container.className = "card-list empty-state";
-        container.innerHTML = "No hay story elements para este filtro.";
-        populateStoryElementSelects();
-        renderProjectMeta();
-        renderRawJson();
-        return;
-    }
-
-    container.className = "card-list";
-    container.innerHTML = "";
-
-    filtered.forEach((item) => {
-        const template = $("#storyElementCardTemplate");
-        const fragment = template.content.cloneNode(true);
-        const card = fragment.querySelector(".story-card");
-
-        card.dataset.storyId = item.id;
-
-        const idInput = fragment.querySelector(".story-id-input");
-        const labelInput = fragment.querySelector(".story-label-input");
-        const typeInput = fragment.querySelector(".story-type-input");
-        const toneInput = fragment.querySelector(".story-tone-input");
-        const descInput = fragment.querySelector(".story-description-input");
-        const selectedInput = fragment.querySelector(".story-selected-input");
-        const removeBtn = fragment.querySelector(".story-remove-btn");
-        const toEventBtn = fragment.querySelector(".story-to-event-btn");
-
-        idInput.value = item.id || "";
-        labelInput.value = item.label || "";
-        typeInput.value = item.type || "Theme";
-        toneInput.value = item.tone || "";
-        descInput.value = item.description || "";
-        selectedInput.checked = !!item.selected;
-
-        idInput.addEventListener("input", syncStoryElementsFromDom);
-        labelInput.addEventListener("input", syncStoryElementsFromDom);
-        typeInput.addEventListener("change", syncStoryElementsFromDom);
-        toneInput.addEventListener("input", syncStoryElementsFromDom);
-        descInput.addEventListener("input", syncStoryElementsFromDom);
-        selectedInput.addEventListener("change", syncStoryElementsFromDom);
-
-        removeBtn.addEventListener("click", () => {
-            state.project.storyelements = state.project.storyelements.filter((story) => story.id !== item.id);
-            renderStoryElements();
-            populateStoryElementSelects();
-            renderProjectMeta();
-            renderRawJson();
-            setStatus("Story element eliminado.", "success");
-        });
-
-        toEventBtn.addEventListener("click", () => {
-            if (!item.id) return;
-            $("#eventStoryElementLink").value = item.id;
-            switchTab("events");
-            setStatus(`Story element ${item.label || item.id} seleccionado para evento.`, "success");
-        });
-
-        container.appendChild(fragment);
-    });
-
-    populateStoryElementSelects();
-    renderProjectMeta();
-    renderRawJson();
-}
 
 function syncStoryElementsFromDom() {
     const cards = $all(".story-card");
@@ -1552,14 +1479,14 @@ function syncStoryElementsFromDom() {
 
     renderProjectMeta();
     renderRawJson();
-    populateStoryElementSelects();
+    
 }
 
 function addStoryElement(type = "Theme") {
     syncProjectFromForms();
     state.project.storyelements.push(createEmptyStoryElement(type));
-    renderStoryElements();
-    populateStoryElementSelects();
+    
+    
     setStatus("Story element añadido.", "success");
 }
 
@@ -1568,7 +1495,7 @@ function renderEvents() {
     if (!state.project.events.length) {
         container.className = "card-list empty-state";
         container.innerHTML = "No hay eventos todavía.";
-        populateStoryElementSelects();
+        
         renderProjectMeta();
         renderRawJson();
         return;
@@ -1630,7 +1557,7 @@ function renderEvents() {
         container.appendChild(fragment);
     });
 
-    populateStoryElementSelects();
+    
     renderProjectMeta();
     renderRawJson();
 }
@@ -1687,17 +1614,7 @@ function populateStorySelect(selectEl, selectedId = "") {
     selectEl.innerHTML = options.join("");
 }
 
-function populateStoryElementSelects() {
-    const mainSelect = $("#eventStoryElementLink");
-    if (mainSelect) {
-        populateStorySelect(mainSelect, mainSelect.value);
-    }
 
-    $all(".event-story-element-id-input").forEach((select) => {
-        const selected = select.value;
-        populateStorySelect(select, selected);
-    });
-}
 
 function applyNarrativeData(data) {
   if (!data || typeof data !== 'object') return;
@@ -2078,7 +1995,7 @@ function bindStoryElements() {
     if (storyFilterType) {
       storyFilterType.addEventListener('change', (event) => {
         state.storyFilterType = event.target.value;
-        renderStoryElements();
+        
       });
     } else {
       console.warn('[bindStoryElements] missing element: #storyFilterType');
