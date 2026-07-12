@@ -892,6 +892,7 @@ function addStoryElement(type = "Theme") {
     syncProjectFromForms();
     state.project.storyelements.push(createEmptyStoryElement(type));
     renderStoryElements();
+    populateStoryElementSelects();
     setStatus("Story element añadido.", "success");
 }
 
@@ -1261,6 +1262,22 @@ async function runAi(section, action) {
     if (!endpoint) {
         setStatus(`No existe endpoint para la sección ${section}.`, "error");
         return;
+    }
+
+    // Validación para eventos
+    if (section === 'event' && action === 'generate_from_story_element') {
+        const selectedStoryId = document.getElementById('eventStoryElementLink')?.value;
+        if (!selectedStoryId) {
+            setStatus('Debes seleccionar un Story Element antes de generar un evento.', 'error');
+            return;
+        }
+        
+        // Verificar que el story element existe
+        const storyElementExists = state.project.storyelements?.some(se => se.id === selectedStoryId);
+        if (!storyElementExists) {
+            setStatus('El Story Element seleccionado no existe en el proyecto.', 'error');
+            return;
+        }
     }
 
     setStatus(`Ejecutando IA: ${section} / ${action}...`, "info");
