@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cadiz12 Narrative Generation Contract",
+  "type": "object",
+  "required": ["operation", "title", "summary", "events"],
+  "properties": {
+    "operation": {
+      "type": "string",
+      "enum": [
+        "generate_chain",
+        "expand_event",
+        "repair_chain",
+        "suggest_elements",
+        "explain_fit"
+      ]
+    },
+    "title": { "type": "string" },
+    "summary": { "type": "string" },
+    "constraints_used": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "chain_role"],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "type": { "type": "string" },
+          "chain_role": { "type": "string" },
+          "requires": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "generates": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "tone": { "type": "string" },
+          "stakes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "notes": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}
+

@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cadiz12 Narrative Workbench</title>
+    <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">C12</div>
+                <div class="brand-copy">
+                    <h1>Cadiz12</h1>
+                    <p>Narrative Workbench</p>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <label class="label" for="agentOverview">Agentes configurados</label>
+                <div id="agentOverview" class="agent-overview empty-state">
+                    Cargando agentes...
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <label class="label" for="globalActions">Acciones globales</label>
+                <div id="globalActions" class="action-stack">
+                    <button id="btnLoadProject" class="btn btn-secondary" type="button">Recargar proyecto</button>
+                    <button id="btnSaveProject" class="btn btn-primary" type="button">Guardar proyecto</button>
+                    <button id="btnReviewProject" class="btn btn-secondary" type="button">Revisión global IA</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <label class="label" for="projectMeta">Estado</label>
+                <div id="projectMeta" class="meta-card">
+                    <div class="meta-row"><span>Proyecto</span><strong id="metaProjectTitle">-</strong></div>
+                    <div class="meta-row"><span>Narrativas</span><strong id="metaNarrativeCount">0</strong></div>
+                    <div class="meta-row"><span>Personajes</span><strong id="metaCharacterCount">0</strong></div>
+                    <div class="meta-row"><span>Tramas</span><strong id="metaPlotCount">0</strong></div>
+                    <div class="meta-row"><span>Eventos</span><strong id="metaEventCount">0</strong></div>
+                    <div class="meta-row"><span>Último estado</span><strong id="metaStatus">Sin cambios</strong></div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <label class="label" for="activityLog">Actividad IA</label>
+                <div id="activityLog" class="activity-log empty-state">
+                    Aún no hay actividad.
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div>
+                    <h2>Editor narrativo</h2>
+                    <p>Proyecto, narrativas, personajes, tramas, eventos y revisión editorial.</p>
+                </div>
+                <div class="topbar-actions">
+                    <button id="btnExportJson" class="btn btn-ghost" type="button">Copiar JSON</button>
+                </div>
+            </header>
+
+            <nav class="tabs" aria-label="Secciones del editor">
+                <button class="tab is-active" data-tab="project" type="button">Proyecto</button>
+                <button class="tab" data-tab="narrative" type="button">Narrativas</button>
+                <button class="tab" data-tab="characters" type="button">Personajes</button>
+                <button class="tab" data-tab="plots" type="button">Tramas</button>
+                <button class="tab" data-tab="story-elements" type="button">Story Elements</button>
+                <button class="tab" data-tab="events" type="button">Eventos</button>
+                <button class="tab" data-tab="review" type="button">Revisión</button>
+                <button class="tab" data-tab="raw-json" type="button">JSON</button>
+            </nav>
+
+            <section id="statusBanner" class="status-banner hidden" aria-live="polite"></section>
+
+            <section id="tab-project" class="tab-panel is-active">
+              <div class="panel-grid">
+                <section class="panel">
+                  <div class="panel-header">
+                    <div>
+                      <h3>Proyecto</h3>
+                      <p>Universo narrativo, tono global y restricciones del proyecto.</p>
+                    </div>
+                    <div class="panel-actions">
+                      <button id="btnAiProjectGenerate" class="btn btn-primary" type="button">IA generar lore base</button>
+                    </div>
+                  </div>
+                  <div class="form-grid two-cols">
+                    <div class="field">
+                      <label for="projectMetaTitle">Título del proyecto</label>
+                      <input id="projectMetaTitle" type="text" placeholder="Nombre del proyecto" />
+                    </div>
+                    <div class="field">
+                      <label for="projectMetaFormat">Formato</label>
+                      <select id="projectMetaFormat">
+                        <option value="theatre_play">Obra de teatro</option>
+                        <option value="novel">Novela</option>
+                        <option value="videogame_campaign">Campaña de videojuego</option>
+                        <option value="interactive_fiction">Ficción interactiva</option>
+                        <option value="series">Serie</option>
+                        <option value="film">Película</option>
+                      </select>
+                    </div>
+                    <div class="field field-full">
+                      <label for="projectMetaSummary">Resumen del proyecto</label>
+                      <textarea id="projectMetaSummary" rows="3" placeholder="Resumen editorial breve"></textarea>
+                    </div>
+                    <div class="field field-full">
+                      <label for="projectMetaWorldContext">Contexto / lore del mundo</label>
+                      <textarea id="projectMetaWorldContext" rows="6" placeholder="Descripción amplia del universo narrativo, reglas del mundo, contexto histórico..."></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="projectMetaAllowedGenres">Géneros permitidos</label>
+                      <textarea id="projectMetaAllowedGenres" rows="4" placeholder="Uno por línea"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="projectMetaMaxRating">Rating máximo de contenido</label>
+                      <select id="projectMetaMaxRating">
+                        <option value="G">G</option>
+                        <option value="PG">PG</option>
+                        <option value="PG-13" selected>PG-13</option>
+                        <option value="R">R</option>
+                        <option value="NC-17">NC-17</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="projectMetaBlockedTags">Sensitivity tags bloqueados</label>
+                      <textarea id="projectMetaBlockedTags" rows="4" placeholder="Uno por línea"></textarea>
+                    </div>
+                    <div class="field field-full">
+                      <label for="projectMetaNotes">Notas editoriales</label>
+                      <textarea id="projectMetaNotes" rows="4" placeholder="Notas libres, hipótesis, restricciones no formalizadas..."></textarea>
+                    </div>
+                  </div>
+                </section>
+                <section class="panel panel-side">
+                  <div class="panel-header">
+                    <div><h3>Workflow proyecto</h3><p>Acciones para definir el universo narrativo.</p></div>
+                  </div>
+                  <div class="workflow-group">
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="project" data-ai-action="generate" type="button">Generar lore base</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="project" data-ai-action="refinetone" type="button">Refinar tono global</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="project" data-ai-action="suggestgenres" type="button">Sugerir géneros compatibles</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="project" data-ai-action="suggestlimits" type="button">Sugerir límites de contenido</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="project" data-ai-action="detectcontradictions" type="button">Detectar contradicciones</button>
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <section id="tab-narrative" class="tab-panel">
+              <div class="panel-grid three-cols">
+                <section class="panel panel-narrow">
+                  <div class="panel-header">
+                    <div><h3>Narrativas</h3><p>Historias del proyecto.</p></div>
+                    <div class="panel-actions">
+                      <button id="btnAddNarrative" class="btn btn-primary btn-small" type="button">+ Nueva</button>
+                    </div>
+                  </div>
+                  <div id="narrativeList" class="card-list empty-state">No hay narrativas.</div>
+                </section>
+                <section class="panel" id="narrativeEditorPanel">
+                  <div class="panel-header">
+                    <div><h3 id="narrativeEditorTitle">Editar narrativa</h3><p>Selecciona una narrativa de la lista.</p></div>
+                  </div>
+                  <div class="form-grid two-cols" id="narrativeEditorForm">
+                    <div class="field">
+                      <label for="narTitle">Título</label>
+                      <input id="narTitle" type="text" placeholder="Título de la narrativa" />
+                    </div>
+                    <div class="field">
+                      <label for="narAct">Acto</label>
+                      <select id="narAct">
+                        <option value="Act1">Act1</option>
+                        <option value="Act2">Act2</option>
+                        <option value="Act3">Act3</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="narTone">Tono</label>
+                      <select id="narTone">
+                        <option value="Ambiguous">Ambiguous</option>
+                        <option value="Tense">Tense</option>
+                        <option value="Melancholic">Melancholic</option>
+                        <option value="Heroic">Heroic</option>
+                        <option value="Political">Political</option>
+                        <option value="Mystical">Mystical</option>
+                        <option value="Tragic">Tragic</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="narHistoricalScope">Alcance histórico</label>
+                      <select id="narHistoricalScope">
+                        <option value="PlausibleInferred">PlausibleInferred</option>
+                        <option value="StrictHistorical">StrictHistorical</option>
+                        <option value="StylizedHistorical">StylizedHistorical</option>
+                        <option value="AlternateHistorical">AlternateHistorical</option>
+                      </select>
+                    </div>
+                    <div class="field field-full">
+                      <label for="narSummary">Resumen</label>
+                      <textarea id="narSummary" rows="3" placeholder="Resumen de la narrativa"></textarea>
+                    </div>
+                    <div class="field field-full">
+                      <label for="narDescription">Descripción</label>
+                      <textarea id="narDescription" rows="4" placeholder="Descripción narrativa detallada"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="narSpaces">Espacios clave</label>
+                      <textarea id="narSpaces" rows="4" placeholder="Uno por línea"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="narFactions">Facciones clave</label>
+                      <textarea id="narFactions" rows="4" placeholder="Una por línea"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="narStakes">Stakes</label>
+                      <textarea id="narStakes" rows="4" placeholder="Uno por línea"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="narTags">Tags</label>
+                      <textarea id="narTags" rows="4" placeholder="Uno por línea"></textarea>
+                    </div>
+                    <div class="field field-full">
+                      <label for="narExtendedNotes">Notas extendidas / compatibilidades futuras</label>
+                      <textarea id="narExtendedNotes" rows="5" placeholder="Texto libre para notas, hipótesis, compatibilidades pendientes de formalizar..."></textarea>
+                    </div>
+                  </div>
+                </section>
+                <section class="panel panel-side">
+                  <div class="panel-header">
+                    <div><h3>Workflow narrativa</h3></div>
+                  </div>
+                  <div class="workflow-group">
+                    <button id="btnAiNarrativeGenerate" class="btn btn-secondary workflow-btn" data-ai-section="narrative" data-ai-action="generate" type="button">Generar propuesta narrativa</button>
+                    <button id="btnAiNarrativeRefine" class="btn btn-secondary workflow-btn" data-ai-section="narrative" data-ai-action="refine" type="button">Refinar resumen y tono</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="narrative" data-ai-action="suggestconflicts" type="button">Sugerir conflictos</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="narrative" data-ai-action="completespaces" type="button">Completar espacios</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="narrative" data-ai-action="completefactions" type="button">Completar facciones</button>
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <section id="tab-characters" class="tab-panel">
+              <div class="panel-grid three-cols">
+                <section class="panel panel-narrow">
+                  <div class="panel-header">
+                    <div><h3>Personajes</h3><p>Biblioteca del proyecto.</p></div>
+                    <div class="panel-actions">
+                      <button id="btnAddCharacter" class="btn btn-primary btn-small" type="button">+ Nuevo</button>
+                    </div>
+                  </div>
+                  <div id="characterList" class="card-list empty-state">No hay personajes.</div>
+                </section>
+                <section class="panel" id="characterEditorPanel">
+                  <div class="panel-header">
+                    <div><h3 id="characterEditorTitle">Editar personaje</h3><p>Selecciona un personaje de la lista.</p></div>
+                  </div>
+                  <div class="form-grid two-cols" id="characterEditorForm">
+                    <div class="field">
+                      <label for="charName">Nombre</label>
+                      <input id="charName" type="text" placeholder="Nombre del personaje" />
+                    </div>
+                    <div class="field">
+                      <label for="charProjectRoleType">Rol en el proyecto</label>
+                      <select id="charProjectRoleType">
+                        <option value="flex">Flexible</option>
+                        <option value="protagonist">Protagonista</option>
+                        <option value="antagonist">Antagonista</option>
+                        <option value="supporting">Secundario</option>
+                      </select>
+                    </div>
+                    <div class="field field-full">
+                      <label for="charSummary">Resumen</label>
+                      <textarea id="charSummary" rows="3" placeholder="Descripción breve del personaje"></textarea>
+                    </div>
+                    <div class="field field-full">
+                      <label for="charDescription">Descripción</label>
+                      <textarea id="charDescription" rows="5" placeholder="Descripción completa, historia, motivaciones..."></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="charDramaticFunctions">Funciones dramáticas</label>
+                      <textarea id="charDramaticFunctions" rows="3" placeholder="Una por línea: héroe, mentor, catalizador..."></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="charCoreDrives">Core drives</label>
+                      <textarea id="charCoreDrives" rows="3" placeholder="Una por línea: justicia, supervivencia, poder..."></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="charTraits">Rasgos</label>
+                      <textarea id="charTraits" rows="3" placeholder="Uno por línea"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="charToneFit">Afinidad de tono</label>
+                      <textarea id="charToneFit" rows="3" placeholder="Uno por línea: Serious, Tragic, Political..."></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="charAllowedPeriods">Períodos históricos válidos</label>
+                      <textarea id="charAllowedPeriods" rows="3" placeholder="Uno por línea"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="charPreferredSettings">Settings preferidos</label>
+                      <textarea id="charPreferredSettings" rows="3" placeholder="Uno por línea"></textarea>
+                    </div>
+                    <div class="field field-full">
+                      <label for="charExtendedNotes">Notas extendidas / compatibilidades futuras</label>
+                      <textarea id="charExtendedNotes" rows="5" placeholder="Texto libre: reglas blandas de casting, hipótesis de compatibilidad, notas para el motor de scoring..."></textarea>
+                    </div>
+                  </div>
+                </section>
+                <section class="panel panel-side">
+                  <div class="panel-header">
+                    <div><h3>Workflow personajes</h3></div>
+                  </div>
+                  <div class="workflow-group">
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="characters" data-ai-action="propose" type="button">Proponer personajes desde narrativa</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="characters" data-ai-action="expandselected" type="button">Expandir personaje seleccionado</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="characters" data-ai-action="suggestrelationships" type="button">Sugerir relaciones</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="characters" data-ai-action="checkcast" type="button">Revisar coherencia del casting</button>
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <section id="tab-plots" class="tab-panel">
+              <div class="panel-grid three-cols">
+                <section class="panel panel-narrow">
+                  <div class="panel-header">
+                    <div><h3>Tramas</h3><p>Colecciones narrativas compuestas.</p></div>
+                    <div class="panel-actions">
+                      <button id="btnAddPlot" class="btn btn-primary btn-small" type="button">+ Nueva trama</button>
+                    </div>
+                  </div>
+                  <div id="plotList" class="card-list empty-state">No hay tramas.</div>
+                </section>
+                <section class="panel" id="plotEditorPanel">
+                  <div class="panel-header">
+                    <div>
+                      <h3 id="plotEditorTitle">Editar trama</h3>
+                      <p>Selecciona una trama o crea una nueva.</p>
+                    </div>
+                    <div class="panel-actions">
+                      <select id="plotNarrativeLink" title="Narrativa asociada">
+                        <option value="">Selecciona narrativa</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-grid two-cols" id="plotEditorForm">
+                    <div class="field">
+                      <label for="plotTitle">Título de la trama</label>
+                      <input id="plotTitle" type="text" placeholder="Título de la trama" />
+                    </div>
+                    <div class="field">
+                      <label for="plotStatus">Estado</label>
+                      <select id="plotStatus">
+                        <option value="draft">Borrador</option>
+                        <option value="review">En revisión</option>
+                        <option value="approved">Aprobado</option>
+                      </select>
+                    </div>
+                    <div class="field field-full">
+                      <label for="plotSummary">Resumen de la trama</label>
+                      <textarea id="plotSummary" rows="3" placeholder="Resumen narrativo de la trama"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="plotProtagonistId">Protagonista</label>
+                      <select id="plotProtagonistId">
+                        <option value="">Sin protagonista</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="plotAntagonistIds">Antagonistas</label>
+                      <textarea id="plotAntagonistIds" rows="3" placeholder="IDs de personajes, uno por línea"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="plotSupportingIds">Personajes de apoyo</label>
+                      <textarea id="plotSupportingIds" rows="3" placeholder="IDs de personajes, uno por línea"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="plotThemeIds">Themes</label>
+                      <textarea id="plotThemeIds" rows="3" placeholder="IDs de themes, uno por línea"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="plotEventIds">Events</label>
+                      <textarea id="plotEventIds" rows="3" placeholder="IDs de events archetype, uno por línea"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="plotSettingIds">Settings</label>
+                      <textarea id="plotSettingIds" rows="3" placeholder="IDs de settings, uno por línea"></textarea>
+                    </div>
+                    <div class="field">
+                      <label for="plotFinaleId">Finale</label>
+                      <input id="plotFinaleId" type="text" placeholder="ID del finale" />
+                    </div>
+                    <div class="field field-full">
+                      <label for="plotExtendedNotes">Notas extendidas / compatibilidades futuras</label>
+                      <textarea id="plotExtendedNotes" rows="5" placeholder="Texto libre: notas de composición, hipótesis de compatibilidad, reglas blandas de selección..."></textarea>
+                    </div>
+                  </div>
+                </section>
+                <section class="panel panel-side">
+                  <div class="panel-header">
+                    <div><h3>Workflow tramas</h3></div>
+                  </div>
+                  <div class="workflow-group">
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="plots" data-ai-action="propose" type="button">Proponer trama completa</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="plots" data-ai-action="suggestprotagonist" type="button">Sugerir protagonista</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="plots" data-ai-action="suggestantagonists" type="button">Sugerir antagonistas</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="plots" data-ai-action="suggestthemes" type="button">Sugerir themes</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="plots" data-ai-action="suggestfinale" type="button">Sugerir finale</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="plots" data-ai-action="rebalance" type="button">Reequilibrar trama</button>
+                    <button class="btn btn-secondary workflow-btn" data-ai-section="plots" data-ai-action="detectredundancies" type="button">Detectar redundancias</button>
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <section id="tab-story-elements" class="tab-panel">
+                <div class="panel-grid">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Story Elements</h3>
+                                <p>Elementos narrativos tipados y editables para el lore de Cadiz12.</p>
+                            </div>
+                            <div class="panel-actions">
+                                <button id="btnAddStoryElement" class="btn btn-primary" type="button">Añadir elemento</button>
+                                <button id="btnAiStoryPropose" class="btn btn-secondary" type="button">IA: proponer lote</button>
+                            </div>
+                        </div>
+
+                        <div class="toolbar-row">
+                            <div class="toolbar-field">
+                                <label for="storyFilterType">Filtrar por tipo</label>
+                                <select id="storyFilterType">
+                                    <option value="All">Todos</option>
+                                    <option value="Theme">Theme</option>
+                                    <option value="Scenario">Scenario</option>
+                                    <option value="Procedure">Procedure</option>
+                                    <option value="Antagonist">Antagonist</option>
+                                    <option value="Secondary">Secondary</option>
+                                    <option value="Protagonist">Protagonist</option>
+                                    <option value="DramaticResource">DramaticResource</option>
+                                </select>
+                            </div>
+
+                            <div class="toolbar-field">
+                                <label for="storyPresetType">Preset rápido</label>
+                                <select id="storyPresetType">
+                                    <option value="">Selecciona preset</option>
+                                    <option value="Theme">Theme</option>
+                                    <option value="Scenario">Scenario</option>
+                                    <option value="Procedure">Procedure</option>
+                                    <option value="Antagonist">Antagonist</option>
+                                    <option value="Secondary">Secondary</option>
+                                    <option value="Protagonist">Protagonist</option>
+                                    <option value="DramaticResource">DramaticResource</option>
+                                </select>
+                            </div>
+
+                            <div class="toolbar-actions">
+                                <button id="btnAddPresetStoryElement" class="btn btn-ghost" type="button">Crear desde preset</button>
+                            </div>
+                        </div>
+
+                        <div id="storyElementsList" class="card-list empty-state">
+                            No hay story elements todavía.
+                        </div>
+                    </section>
+
+                    <section class="panel panel-side">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Workflow story elements</h3>
+                                <p>Usa los tipos definidos para Cadiz12.</p>
+                            </div>
+                        </div>
+
+                        <div class="workflow-group">
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose" type="button">
+                                Proponer lote general
+                            </button>
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose_antagonists" type="button">
+                                Proponer antagonistas
+                            </button>
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose_procedures" type="button">
+                                Proponer procedures
+                            </button>
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="story-elements" data-ai-action="propose_resources" type="button">
+                                Proponer dramatic resources
+                            </button>
+                            <button id="btnAiStoryEnrichSelected" class="btn btn-secondary" type="button">
+                                Enriquecer seleccionados
+                            </button>
+                        </div>
+
+                        <div class="hint-card">
+                            <h4>Tipologías activas</h4>
+                            <ul class="compact-list">
+                                <li>Theme</li>
+                                <li>Scenario</li>
+                                <li>Procedure</li>
+                                <li>Antagonist</li>
+                                <li>Secondary</li>
+                                <li>Protagonist</li>
+                                <li>DramaticResource</li>
+                            </ul>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="tab-events" class="tab-panel">
+                <div class="panel-grid">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Eventos</h3>
+                                <p>Eventos completos vinculados a story elements existentes.</p>
+                            </div>
+                            <div class="panel-actions">
+                                <button id="btnAddEvent" class="btn btn-primary" type="button">Añadir evento</button>
+                                <button id="btnAiGenerateEvent" class="btn btn-secondary" type="button">IA: generar evento</button>
+                            </div>
+                        </div>
+
+                        <div class="toolbar-row">
+                            <div class="toolbar-field">
+                                <label for="eventStoryElementLink">Story element base</label>
+                                <select id="eventStoryElementLink">
+                                    <option value="">Selecciona story element</option>
+                                </select>
+                            </div>
+
+                            <div class="toolbar-actions">
+                                <button id="btnAiGenerateFromSelectedStory" class="btn btn-ghost" type="button">Generar desde story element</button>
+                            </div>
+                        </div>
+
+                        <div id="eventsList" class="card-list empty-state">
+                            No hay eventos todavía.
+                        </div>
+                    </section>
+
+                    <section class="panel panel-side">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Workflow eventos</h3>
+                                <p>Construcción de contenido jugable.</p>
+                            </div>
+                        </div>
+
+                        <div class="workflow-group">
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="event" data-ai-action="generate_from_story_element" type="button">
+                                Generar evento desde elemento
+                            </button>
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="event" data-ai-action="rewrite_body_text" type="button">
+                                Reescribir body_text
+                            </button>
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="event" data-ai-action="generate_choices" type="button">
+                                Generar choices
+                            </button>
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="event" data-ai-action="tighten_consequences" type="button">
+                                Ajustar consecuencias
+                            </button>
+                        </div>
+
+                        <div class="hint-card">
+                            <h4>Contrato de evento</h4>
+                            <p>Cada evento debe contener id, label, title, story_element_id, body_text, flavor_text, choices, consequences y assets.</p>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="tab-review" class="tab-panel">
+                <div class="panel-grid">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Revisión editorial</h3>
+                                <p>Diagnóstico global del proyecto y sus secciones.</p>
+                            </div>
+                            <div class="panel-actions">
+                                <button id="btnAiRunReview" class="btn btn-primary" type="button">IA: revisar proyecto</button>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="field field-full">
+                                <label for="reviewSummary">Resumen editorial</label>
+                                <textarea id="reviewSummary" rows="8" placeholder="La revisión IA escribirá aquí un resumen editorial global."></textarea>
+                            </div>
+
+                            <div class="field field-full">
+                                <label for="reviewIssues">Issues detectados</label>
+                                <textarea id="reviewIssues" rows="10" placeholder="Uno por línea"></textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="panel panel-side">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Workflow revisión</h3>
+                                <p>Acciones sobre coherencia y consistencia.</p>
+                            </div>
+                        </div>
+
+                        <div class="workflow-group">
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="review" data-ai-action="review" type="button">
+                                Revisión general
+                            </button>
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="review" data-ai-action="review_tone" type="button">
+                                Revisar tono
+                            </button>
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="review" data-ai-action="review_consistency" type="button">
+                                Revisar consistencia
+                            </button>
+                            <button class="btn btn-secondary workflow-btn" data-ai-section="review" data-ai-action="review_historical_alignment" type="button">
+                                Revisar alineación histórica
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="tab-raw-json" class="tab-panel">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3>Estado JSON del proyecto</h3>
+                            <p>Vista de diagnóstico del documento persistido en project.json.</p>
+                        </div>
+                    </div>
+
+                    <div class="field field-full">
+                        <label for="rawJsonView">JSON</label>
+                        <textarea id="rawJsonView" rows="28" spellcheck="false"></textarea>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <template id="storyElementCardTemplate">
+        <article class="entity-card story-card">
+            <div class="entity-card-header">
+                <div class="entity-card-title-group">
+                    <input class="story-id-input subtle-input" type="text" placeholder="id" />
+                    <input class="story-label-input title-input" type="text" placeholder="Label del story element" />
+                </div>
+                <div class="entity-card-actions">
+                    <label class="checkbox-inline">
+                        <input class="story-selected-input" type="checkbox" />
+                        <span>Seleccionar</span>
+                    </label>
+                    <button class="btn btn-danger btn-small story-remove-btn" type="button">Eliminar</button>
+                </div>
+            </div>
+
+            <div class="form-grid two-cols compact-grid">
+                <div class="field">
+                    <label>Tipo</label>
+                    <select class="story-type-input">
+                        <option value="Theme">Theme</option>
+                        <option value="Scenario">Scenario</option>
+                        <option value="Procedure">Procedure</option>
+                        <option value="Antagonist">Antagonist</option>
+                        <option value="Secondary">Secondary</option>
+                        <option value="Protagonist">Protagonist</option>
+                        <option value="DramaticResource">DramaticResource</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label>Tono</label>
+                    <input class="story-tone-input" type="text" placeholder="Ambiguous, Tense, Political..." />
+                </div>
+
+                <div class="field field-full">
+                    <label>Descripción</label>
+                    <textarea class="story-description-input" rows="5" placeholder="Descripción funcional del elemento narrativo"></textarea>
+                </div>
+            </div>
+
+            <div class="inline-actions">
+                <button class="btn btn-ghost btn-small story-to-event-btn" type="button">Usar para evento</button>
+            </div>
+        </article>
+    </template>
+
+    <template id="eventCardTemplate">
+        <article class="entity-card event-card">
+            <div class="entity-card-header">
+                <div class="entity-card-title-group">
+                    <input class="event-id-input subtle-input" type="text" placeholder="id" />
+                    <input class="event-title-input title-input" type="text" placeholder="Título del evento" />
+                </div>
+                <div class="entity-card-actions">
+                    <button class="btn btn-danger btn-small event-remove-btn" type="button">Eliminar</button>
+                </div>
+            </div>
+
+            <div class="form-grid two-cols compact-grid">
+                <div class="field">
+                    <label>Label</label>
+                    <input class="event-label-input" type="text" placeholder="label técnico" />
+                </div>
+
+                <div class="field">
+                    <label>Story element vinculado</label>
+                    <select class="event-story-element-id-input">
+                        <option value="">Selecciona story element</option>
+                    </select>
+                </div>
+
+                <div class="field field-full">
+                    <label>Body text</label>
+                    <textarea class="event-body-text-input" rows="6" placeholder="Texto principal del evento"></textarea>
+                </div>
+
+                <div class="field field-full">
+                    <label>Flavor text</label>
+                    <textarea class="event-flavor-text-input" rows="4" placeholder="Texto de ambientación"></textarea>
+                </div>
+
+                <div class="field">
+                    <label>Choices</label>
+                    <textarea class="event-choices-input" rows="7" placeholder='JSON array: [{"id":"c1","label":"...","outcome":"..."}]'></textarea>
+                </div>
+
+                <div class="field">
+                    <label>Consequences</label>
+                    <textarea class="event-consequences-input" rows="7" placeholder="Una por línea"></textarea>
+                </div>
+
+                <div class="field field-full">
+                    <label>Assets</label>
+                    <textarea class="event-assets-input" rows="4" placeholder="Uno por línea"></textarea>
+                </div>
+            </div>
+        </article>
+    </template>
+
+    <script src="/app.js"></script>
+</body>
+</html>
