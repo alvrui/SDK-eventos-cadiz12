@@ -334,6 +334,53 @@
             </section>
 
             <section id="tab-plots" class="tab-panel">
+              <!-- SECCIÓN DE CATÁLOGOS DE STORY ELEMENTS -->
+              <div class="panel" style="margin-bottom: 1em;">
+                <div class="panel-header">
+                  <div>
+                    <h3>Catálogos de Story Elements</h3>
+                    <p>Selecciona un catálogo para trabajar con tramas coherentes.</p>
+                  </div>
+                  <div class="panel-actions">
+                    <button id="btnGenerateCatalog" class="btn btn-primary btn-small" type="button">Generar catálogo adaptado</button>
+                  </div>
+                </div>
+                
+                <div class="toolbar-row">
+                  <div class="toolbar-field" style="flex: 1;">
+                    <label for="catalogSelect">Catálogo activo</label>
+                    <select id="catalogSelect" class="form-select">
+                      <option value="generic">Catálogo Genérico (CSV)</option>
+                      <option value="">-- Catálogos Generados por IA --</option>
+                    </select>
+                  </div>
+                  <div class="toolbar-actions">
+                    <button id="btnHighlightRecommended" class="btn btn-secondary btn-small" type="button">Resaltar recomendados por IA</button>
+                  </div>
+                </div>
+                
+                <div class="toolbar-row" style="margin-top: 0.5em;">
+                  <div class="toolbar-field">
+                    <label for="storyElementTypeFilter">Filtrar por tipología</label>
+                    <select id="storyElementTypeFilter" class="form-select">
+                      <option value="All">Todos</option>
+                      <option value="Protagonist">Protagonist</option>
+                      <option value="Antagonist">Antagonist</option>
+                      <option value="Theme">Theme</option>
+                      <option value="Secondary">Secondary</option>
+                      <option value="Scenario">Scenario</option>
+                      <option value="Procedure">Procedure</option>
+                      <option value="DramaticResource">DramaticResource</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div id="catalogStoryElementsList" class="card-list empty-state">
+                  Selecciona un catálogo para ver los story elements disponibles.
+                </div>
+              </div>
+              
+              <!-- SECCIÓN DE GESTIÓN DE TRAMAS (existente) -->
               <div class="panel-grid three-cols">
                 <section class="panel panel-narrow">
                   <div class="panel-header">

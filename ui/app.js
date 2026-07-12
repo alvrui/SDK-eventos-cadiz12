@@ -8,7 +8,14 @@ const state = {
     activity: [],
     agents: [],
     selectedAgentId: null,
-    selectedAgentName: null
+    selectedAgentName: null,
+    catalogs: {
+        generic: null,
+        generated: []
+    },
+    selectedCatalog: 'generic',
+    selectedStoryElementType: 'All',
+    highlightedStoryElements: []
 };
 
 function createDefaultProject() {
@@ -489,6 +496,260 @@ function renderAgentsTab() {
             </article>
         `;
     }).join("");
+}
+
+// ============================================
+// FUNCIONES PARA CATÁLOGOS DE STORY ELEMENTS
+// ============================================
+
+async function loadGenericCatalog() {
+    try {
+        // Cargar todos los CSV del catálogo genérico
+        const catalogFiles = [
+            'protagonist', 'antagonist', 'theme', 'secondary',
+            'scenario', 'procedure', 'dramaticresource', 'genre',
+            'settings', 'finale', 'events'
+        ];
+        
+        const allElements = [];
+        
+        for (const file of catalogFiles) {
+            try {
+                const response = await fetch(`/projectdata/catalogs/${file}.csv`);
+                if (response.ok) {
+                    const csv = await response.text();
+                    const elements = parseCSV(csv, file);
+                    allElements.push(...elements);
+                }
+            } catch (error) {
+                console.warn(`No se pudo cargar ${file}.csv:`, error);
+            }
+        }
+        
+        state.catalogs.generic = allElements;
+        return allElements;
+    } catch (error) {
+        console.error('Error cargando catálogo genérico:', error);
+        return [];
+    }
+}
+
+function parseCSV(csv, type) {
+    const lines = csv.split('\n');
+    if (lines.length < 2) return [];
+    
+    const headers = lines[0].split(',').map(h => h.trim());
+    const elements = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        const values = line.split(',').map(v => v.trim());
+        const element = { type: type };
+        
+        for (let j = 0; j < Math.min(headers.length, values.length); j++) {
+            element[headers[j]] = values[j];
+        }
+        
+        elements.push(element);
+    }
+    
+    return elements;
+}
+
+function renderCatalogSelector() {
+    const select = document.getElementById('catalogSelect');
+    if (!select) return;
+    
+    const options = [
+        '<option value="generic">Catálogo Genérico (CSV)</option>',
+        '<option value="">-- Catálogos Generados por IA --</option>'
+    ];
+    
+    state.catalogs.generated.forEach((catalog, index) => {
+        options.push(`<option value="generated_${index}">Catálogo ${index + 1} (${catalog.name || 'sin nombre'})</option>`);
+    });
+    
+    select.innerHTML = options.join('');
+    select.value = state.selectedCatalog;
+}
+
+function renderCatalogStoryElements() {
+    const container = document.getElementById('catalogStoryElementsList');
+    if (!container) return;
+    
+    let elements = [];
+    
+    if (state.selectedCatalog === 'generic') {
+        elements = state.catalogs.generic || [];
+    } else if (state.selectedCatalog.startsWith('generated_')) {
+        const index = parseInt(state.selectedCatalog.replace('generated_', ''));
+        elements = state.catalogs.generated[index]?.elements || [];
+    }
+    
+    // Filtrar por tipología
+    const typeFilter = state.selectedStoryElementType;
+    if (typeFilter !== 'All') {
+        elements = elements.filter(el => el.type === typeFilter.toLowerCase() || el.category === typeFilter);
+    }
+    
+    if (!elements.length) {
+        container.className = 'card-list empty-state';
+        container.innerHTML = 'No hay story elements para este catálogo y filtro.';
+        return;
+    }
+    
+    container.className = 'card-list';
+    container.innerHTML = elements.map(element => {
+        const isHighlighted = state.highlightedStoryElements.includes(element.id);
+        const highlightClass = isHighlighted ? 'highlighted' : '';
+        
+        return `
+            <article class="entity-card story-card ${highlightClass}" data-element-id="${element.id || ''}">
+                <div class="entity-card-header">
+                    <div class="entity-card-title-group">
+                        <h4 style="margin: 0;">${escapeHtml(element.spanish_name || element.english_name || element.id || 'Sin nombre')}</h4>
+                        <span class="badge" style="font-size: 0.75em;">${escapeHtml(element.type || element.category || 'Unknown')}</span>
+                    </div>
+                </div>
+                <div class="form-grid two-cols compact-grid" style="margin-top: 0.5em;">
+                    <div class="field">
+                        <label>ID</label>
+                        <div class="mono" style="font-size: 0.85em;">${escapeHtml(element.id || '')}</div>
+                    </div>
+                    <div class="field">
+                        <label>Tipo</label>
+                        <div style="font-size: 0.85em;">${escapeHtml(element.subtype || element.role_in_story || '')}</div>
+                    </div>
+                    <div class="field field-full">
+                        <label>Descripción</label>
+                        <div style="font-size: 0.85em; max-height: 100px; overflow: hidden;">${escapeHtml((element.logline_usage || element.description || '').substring(0, 200))}</div>
+                    </div>
+                </div>
+            </article>
+        `;
+    }).join('');
+}
+
+async function generateAdaptedCatalog() {
+    setStatus('Generando catálogo adaptado...', 'info');
+    
+    try {
+        // Preparar el payload con el proyecto actual
+        const payload = {
+            action: 'generate_catalog',
+            project: state.project,
+            generic_catalog: state.catalogs.generic
+        };
+        
+        // Llamar a la IA para generar un catálogo adaptado
+        const response = await fetch('http://127.0.0.1:8000/enviar_mensaje', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                agente: state.selectedAgentName || 'CoordinadorNarrativo',
+                mensaje: `Generar un catálogo de story elements adaptado al siguiente proyecto: ${JSON.stringify(state.project.projectMeta, null, 2)}. 
+
+Basado en el catálogo genérico: ${JSON.stringify(state.catalogs.generic.slice(0, 5), null, 2)}...
+
+Devuelve SOLO JSON con el formato: {"name": "nombre del catálogo", "elements": [{"id": "...", "name": "...", "type": "...", "description": "...", "recommended": true/false}]}`
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al generar catálogo');
+        }
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            // Parsear la respuesta (asumiendo que es JSON válido)
+            let catalogData;
+            try {
+                catalogData = typeof result.text === 'string' ? JSON.parse(result.text) : result.text;
+            } catch (e) {
+                catalogData = { name: 'Catálogo Generado', elements: [] };
+            }
+            
+            // Añadir al estado
+            state.catalogs.generated.push(catalogData);
+            state.selectedCatalog = `generated_${state.catalogs.generated.length - 1}`;
+            
+            // Renderizar
+            renderCatalogSelector();
+            renderCatalogStoryElements();
+            
+            setStatus(`Catálogo "${catalogData.name}" generado correctamente.`, 'success');
+        } else {
+            setStatus(`Error: ${result.message || 'Respuesta inválida'}`, 'error');
+        }
+    } catch (error) {
+        setStatus(`Error generando catálogo: ${error.message}`, 'error');
+    }
+}
+
+async function highlightRecommendedElements() {
+    setStatus('Pidiendo recomendaciones a la IA...', 'info');
+    
+    try {
+        let elements = [];
+        if (state.selectedCatalog === 'generic') {
+            elements = state.catalogs.generic || [];
+        } else if (state.selectedCatalog.startsWith('generated_')) {
+            const index = parseInt(state.selectedCatalog.replace('generated_', ''));
+            elements = state.catalogs.generated[index]?.elements || [];
+        }
+        
+        // Preparar el payload
+        const payload = {
+            action: 'recommend_elements',
+            project: state.project,
+            elements: elements
+        };
+        
+        // Llamar a la IA para resaltar elementos recomendados
+        const response = await fetch('http://127.0.0.1:8000/enviar_mensaje', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                agente: state.selectedAgentName || 'ContextoHistorico',
+                mensaje: `Analiza el siguiente proyecto: ${JSON.stringify(state.project.projectMeta, null, 2)}. 
+
+De los siguientes story elements, selecciona los más adecuados: ${JSON.stringify(elements.slice(0, 10), null, 2)}...
+
+Devuelve SOLO JSON con un array de IDs recomendados: ["id1", "id2", ...]`
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al obtener recomendaciones');
+        }
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            // Parsear la respuesta
+            let recommendedIds;
+            try {
+                recommendedIds = typeof result.text === 'string' ? JSON.parse(result.text) : result.text;
+            } catch (e) {
+                recommendedIds = [];
+            }
+            
+            // Guardar los IDs recomendados
+            state.highlightedStoryElements = Array.isArray(recommendedIds) ? recommendedIds : [];
+            
+            // Renderizar para mostrar los resaltados
+            renderCatalogStoryElements();
+            
+            setStatus(`Elementos recomendados resaltados (${state.highlightedStoryElements.length}).`, 'success');
+        } else {
+            setStatus(`Error: ${result.message || 'Respuesta inválida'}`, 'error');
+        }
+    } catch (error) {
+        setStatus(`Error obteniendo recomendaciones: ${error.message}`, 'error');
+    }
 }
 
 async function loadProject() {
@@ -1813,6 +2074,33 @@ function bindAgents() {
         renderAgentSelectors();
         setStatus(`Agente seleccionado: ${name}`, 'success');
     };
+    
+    // Binding para catálogos
+    const catalogSelect = document.getElementById('catalogSelect');
+    if (catalogSelect) {
+        catalogSelect.addEventListener('change', (event) => {
+            state.selectedCatalog = event.target.value;
+            renderCatalogStoryElements();
+        });
+    }
+    
+    const storyElementTypeFilter = document.getElementById('storyElementTypeFilter');
+    if (storyElementTypeFilter) {
+        storyElementTypeFilter.addEventListener('change', (event) => {
+            state.selectedStoryElementType = event.target.value;
+            renderCatalogStoryElements();
+        });
+    }
+    
+    const btnGenerateCatalog = document.getElementById('btnGenerateCatalog');
+    if (btnGenerateCatalog) {
+        btnGenerateCatalog.addEventListener('click', generateAdaptedCatalog);
+    }
+    
+    const btnHighlightRecommended = document.getElementById('btnHighlightRecommended');
+    if (btnHighlightRecommended) {
+        btnHighlightRecommended.addEventListener('click', highlightRecommendedElements);
+    }
 }
 
 function bindGlobalActions() {
@@ -1956,6 +2244,12 @@ async function bootstrap() {
     await loadAgents();
   } catch (err) {
     console.error('[bootstrap] loadAgents failed', err);
+  }
+
+  try {
+    await loadGenericCatalog();
+  } catch (err) {
+    console.error('[bootstrap] loadGenericCatalog failed', err);
   }
 
   try {

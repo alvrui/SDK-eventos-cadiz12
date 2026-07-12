@@ -709,3 +709,53 @@ p {
         width: 100%;
     }
 }
+
+/* Estilos para catálogos de story elements */
+.entity-card.highlighted {
+    border: 2px solid var(--primary);
+    box-shadow: 0 0 0 2px rgba(31, 95, 91, 0.2);
+    background-color: color-mix(in srgb, var(--success-bg) 10%, transparent);
+}
+
+.entity-card.highlighted .entity-card-header {
+    background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+#catalogStoryElementsList .entity-card {
+    margin-bottom: 0.75em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#catalogStoryElementsList .entity-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+#catalogStoryElementsList .badge {
+    display: inline-block;
+    padding: 0.25em 0.5em;
+    border-radius: 999px;
+    font-size: 0.75em;
+    background-color: var(--surface-2);
+    border: 1px solid var(--border);
+}
+
+/* Panel de catálogos */
+#catalogSelect, #storyElementTypeFilter {
+    width: 100%;
+    padding: 0.5em;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background-color: var(--surface);
+}
+
+#catalogStoryElementsList {
+    margin-top: 0.75em;
+}
+
+#catalogStoryElementsList.empty-state {
+    padding: 1em;
+    text-align: center;
+    color: var(--text-muted);
+}
