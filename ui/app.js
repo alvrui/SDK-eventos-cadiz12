@@ -752,6 +752,229 @@ Devuelve SOLO JSON con un array de IDs recomendados: ["id1", "id2", ...]`
     }
 }
 
+// ============================================
+// FUNCIONES ESPECÍFICAS PARA TRAMAS CON CATÁLOGO
+// ============================================
+
+async function generatePlotFromCatalog() {
+    if (!state.selectedAgentId) {
+        setStatus('Selecciona un agente primero.', 'error');
+        return;
+    }
+    
+    if (!state.selectedCatalog) {
+        setStatus('Selecciona un catálogo primero.', 'error');
+        return;
+    }
+    
+    setStatus('Generando trama desde catálogo...', 'info');
+    
+    try {
+        // Obtener los elementos del catálogo seleccionado
+        let catalogElements = [];
+        if (state.selectedCatalog === 'generic') {
+            catalogElements = state.catalogs.generic || [];
+        } else if (state.selectedCatalog.startsWith('generated_')) {
+            const index = parseInt(state.selectedCatalog.replace('generated_', ''));
+            catalogElements = state.catalogs.generated[index]?.elements || [];
+        }
+        
+        // Filtrar por elementos recomendados si los hay
+        const filteredElements = state.highlightedStoryElements.length > 0
+            ? catalogElements.filter(el => state.highlightedStoryElements.includes(el.id))
+            : catalogElements;
+        
+        // Llamar a la IA para generar una trama
+        const response = await fetch('http://127.0.0.1:8000/enviar_mensaje', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                agente: state.selectedAgentName || 'CoordinadorNarrativo',
+                mensaje: `Generar una trama completa para el proyecto: ${JSON.stringify(state.project.projectMeta, null, 2)}. 
+
+Usa los siguientes story elements del catálogo: ${JSON.stringify(filteredElements.slice(0, 20), null, 2)}. 
+
+Devuelve SOLO JSON con el formato de trama: {"id": "...", "title": "...", "summary": "...", "status": "draft", "protagonist_id": "...", "antagonist_ids": [...], "theme_ids": [...], "event_ids": [...], "setting_ids": [...], "finale_id": "..."}`
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al generar trama');
+        }
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            // Parsear la respuesta
+            let plotData;
+            try {
+                plotData = typeof result.text === 'string' ? JSON.parse(result.text) : result.text;
+            } catch (e) {
+                setStatus(`Error parseando respuesta: ${e.message}`, 'error');
+                return;
+            }
+            
+            // Añadir la trama al proyecto
+            state.project.plots.push(plotData);
+            
+            // Renderizar
+            renderPlotList();
+            renderProjectMeta();
+            renderRawJson();
+            
+            setStatus(`Trama "${plotData.title}" generada desde catálogo.`, 'success');
+        } else {
+            setStatus(`Error: ${result.message || 'Respuesta inválida'}`, 'error');
+        }
+    } catch (error) {
+        setStatus(`Error generando trama: ${error.message}`, 'error');
+    }
+}
+
+async function suggestCatalogElements() {
+    if (!state.selectedAgentId) {
+        setStatus('Selecciona un agente primero.', 'error');
+        return;
+    }
+    
+    if (!state.selectedCatalog) {
+        setStatus('Selecciona un catálogo primero.', 'error');
+        return;
+    }
+    
+    setStatus('Pidiendo sugerencias de elementos...', 'info');
+    
+    try {
+        // Obtener los elementos del catálogo seleccionado
+        let catalogElements = [];
+        if (state.selectedCatalog === 'generic') {
+            catalogElements = state.catalogs.generic || [];
+        } else if (state.selectedCatalog.startsWith('generated_')) {
+            const index = parseInt(state.selectedCatalog.replace('generated_', ''));
+            catalogElements = state.catalogs.generated[index]?.elements || [];
+        }
+        
+        // Llamar a la IA para sugerir elementos
+        const response = await fetch('http://127.0.0.1:8000/enviar_mensaje', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                agente: state.selectedAgentName || 'ContextoHistorico',
+                mensaje: `Para el proyecto: ${JSON.stringify(state.project.projectMeta, null, 2)}. 
+
+Sugiere story elements adecuados del siguiente catálogo: ${JSON.stringify(catalogElements.slice(0, 30), null, 2)}. 
+
+Devuelve SOLO JSON con un array de elementos recomendados: [{"id": "...", "name": "...", "type": "...", "reason": "..."}]`
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al sugerir elementos');
+        }
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            // Parsear la respuesta
+            let suggestions;
+            try {
+                suggestions = typeof result.text === 'string' ? JSON.parse(result.text) : result.text;
+            } catch (e) {
+                setStatus(`Error parseando respuesta: ${e.message}`, 'error');
+                return;
+            }
+            
+            // Mostrar sugerencias (podríamos añadir un modal o panel)
+            setStatus(`Sugerencias: ${suggestions.length} elementos recomendados.`, 'success');
+            
+            // Opcional: Resaltar los elementos sugeridos
+            if (Array.isArray(suggestions)) {
+                state.highlightedStoryElements = suggestions.map(s => s.id);
+                renderCatalogStoryElements();
+            }
+        } else {
+            setStatus(`Error: ${result.message || 'Respuesta inválida'}`, 'error');
+        }
+    } catch (error) {
+        setStatus(`Error sugiriendo elementos: ${error.message}`, 'error');
+    }
+}
+
+async function validatePlotWithCatalog() {
+    if (!state.selectedAgentId) {
+        setStatus('Selecciona un agente primero.', 'error');
+        return;
+    }
+    
+    if (!state.selectedCatalog) {
+        setStatus('Selecciona un catálogo primero.', 'error');
+        return;
+    }
+    
+    // Obtener la trama activa
+    const activePlot = state.project.plots.find(p => p.id === state.activePlotId);
+    if (!activePlot) {
+        setStatus('Selecciona una trama primero.', 'error');
+        return;
+    }
+    
+    setStatus('Validando trama con catálogo...', 'info');
+    
+    try {
+        // Obtener los elementos del catálogo seleccionado
+        let catalogElements = [];
+        if (state.selectedCatalog === 'generic') {
+            catalogElements = state.catalogs.generic || [];
+        } else if (state.selectedCatalog.startsWith('generated_')) {
+            const index = parseInt(state.selectedCatalog.replace('generated_', ''));
+            catalogElements = state.catalogs.generated[index]?.elements || [];
+        }
+        
+        // Llamar a la IA para validar
+        const response = await fetch('http://127.0.0.1:8000/enviar_mensaje', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                agente: state.selectedAgentName || 'Verificacion',
+                mensaje: `Valida la siguiente trama contra el catálogo: 
+
+Trama: ${JSON.stringify(activePlot, null, 2)} 
+
+Catálogo: ${JSON.stringify(catalogElements.slice(0, 20), null, 2)}. 
+
+Devuelve SOLO JSON con el formato: {"valid": true/false, "issues": [...], "suggestions": [...]}`
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Error al validar');
+        }
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            // Parsear la respuesta
+            let validation;
+            try {
+                validation = typeof result.text === 'string' ? JSON.parse(result.text) : result.text;
+            } catch (e) {
+                setStatus(`Error parseando respuesta: ${e.message}`, 'error');
+                return;
+            }
+            
+            if (validation.valid) {
+                setStatus('Trama válida según el catálogo.', 'success');
+            } else {
+                setStatus(`Trama con issues: ${validation.issues?.join(', ') || 'Desconocido'}`, 'warning');
+            }
+        } else {
+            setStatus(`Error: ${result.message || 'Respuesta inválida'}`, 'error');
+        }
+    } catch (error) {
+        setStatus(`Error validando: ${error.message}`, 'error');
+    }
+}
+
 async function loadProject() {
   clearStatus();
   const raw = await apiGet('/api/project');
@@ -1706,10 +1929,21 @@ async function runAi(section, action) {
             const selectedStoryId = document.getElementById('eventStoryElementLink')?.value;
             if (selectedStoryId) payloadProject.selectedstoryelementid = selectedStoryId;
         }
+        
+        // Para acciones de plots con catálogo, incluir el catálogo seleccionado
+        if (section === 'plots' && (action.includes('catalog') || action.includes('generate_from_catalog'))) {
+            payloadProject.selectedCatalog = state.selectedCatalog;
+            payloadProject.catalogElements = state.selectedCatalog === 'generic' 
+                ? state.catalogs.generic 
+                : (state.catalogs.generated[parseInt(state.selectedCatalog.replace('generated_', ''))]?.elements || []);
+            payloadProject.highlightedElements = state.highlightedStoryElements;
+        }
 
         const response = await apiPost(endpoint, {
             action,
-            project: payloadProject
+            project: payloadProject,
+            agent_id: state.selectedAgentId,
+            agent_name: state.selectedAgentName
         });
 
         applyAiResult(section, response);
@@ -2143,6 +2377,22 @@ function bindGlobalActions() {
       button.addEventListener('click', () => {
         const section = button.dataset.aiSection;
         const action = button.dataset.aiAction;
+        
+        // Para acciones específicas de catálogo, usar funciones dedicadas
+        if (section === 'plots' && action === 'generate_from_catalog') {
+          generatePlotFromCatalog();
+          return;
+        }
+        if (section === 'plots' && action === 'suggest_catalog_elements') {
+          suggestCatalogElements();
+          return;
+        }
+        if (section === 'plots' && action === 'validate_with_catalog') {
+          validatePlotWithCatalog();
+          return;
+        }
+        
+        // Para el resto, usar runAi normal
         runAi(section, action);
       });
     });
