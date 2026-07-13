@@ -2,7 +2,15 @@ use reqwest::blocking::Client;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
+use std::time::Instant;
 use tiny_http::{Header, Method, Response, Server, StatusCode};
+
+// Importar módulo AI
+use crate::ai::schemas::SchemaManager;
+use crate::ai::validator::AgentResponseValidator;
+use crate::ai::logger::AgentInteractionLogger;
+use crate::ai::feedback::FeedbackGenerator;
+use crate::ai::prompts::PromptBuilder;
 
 const INDEX_HTML: &str = include_str!("../ui/index.html");
 const APP_JS: &str = include_str!("../ui/app.js");
@@ -10,6 +18,7 @@ const APP_CSS: &str = include_str!("../ui/styles.css");
 
 const UI_HOST: &str = "0.0.0.0:7879";
 const SECRETARIO_BASE_URL: &str = "http://127.0.0.1:8000";
+const AI_LOG_DIR: &str = "logs/agents";
 
 fn json_response(body: String) -> Response<std::io::Cursor<Vec<u8>>> {
     Response::from_string(body)
@@ -339,14 +348,51 @@ fn parse_agent_json_payload(
     payload: serde_json::Value,
     section: &str,
     action: &str,
+    validator: &AgentResponseValidator,
+    logger: &AgentInteractionLogger,
+    feedback_generator: &FeedbackGenerator,
 ) -> Result<serde_json::Value, serde_json::Value> {
-    // 1. Validar status global de secretario
-    if payload.get("status").and_then(|v| v.as_str()) != Some("success") {
+    // 1. Registrar la respuesta recibida (para debugging)
+    logger.log_response("parse_agent_json_payload", &payload, true, None);
+    
+    // 1b. Validar estructura básica
+    if let Err(errors) = validator.validate_basic_structure(section, &payload) {
+        let feedback = feedback_generator.generate_validation_feedback(section, action, "secretario.py", &errors);
+        logger.log_feedback(&feedback);
         return Err(json!({
             "status": "error",
             "section": section,
             "action": action,
-            "message": payload.get("message").and_then(|v| v.as_str()).unwrap_or("secretario.py devolvió error"),
+            "message": "Estructura de respuesta inválida",
+            "errors": errors,
+            "raw_payload": payload
+        }));
+    }
+    
+    // 1c. Validar contra schema específico
+    if let Err(errors) = validator.validate_response(section, &payload) {
+        let feedback = feedback_generator.generate_schema_feedback(section, action, "secretario.py", &errors);
+        logger.log_feedback(&feedback);
+        return Err(json!({
+            "status": "error",
+            "section": section,
+            "action": action,
+            "message": "Respuesta no cumple con el schema",
+            "schema_errors": errors,
+            "raw_payload": payload
+        }));
+    }
+
+    // 2. Validar status global de secretario
+    if payload.get("status").and_then(|v| v.as_str()) != Some("success") {
+        let message = payload.get("message").and_then(|v| v.as_str()).unwrap_or("secretario.py devolvió error");
+        let feedback = feedback_generator.generate_generic_error_feedback(section, action, "secretario.py", message);
+        logger.log_feedback(&feedback);
+        return Err(json!({
+            "status": "error",
+            "section": section,
+            "action": action,
+            "message": message,
             "raw_payload": payload
         }));
     }
@@ -828,43 +874,75 @@ fn handle_ai_request(
     action: &str,
     project: &Value,
     prompt_builder: fn(&str, &Value) -> String,
+    validator: &AgentResponseValidator,
+    logger: &AgentInteractionLogger,
+    feedback_generator: &FeedbackGenerator,
 ) -> String {
     let configured_agent = get_agent_name(project, section, default_agent);
     let prompt = prompt_builder(action, project);
+    
+    // Registrar la solicitud
+    let start_time = Instant::now();
+    let log_filename = logger.log_request(section, action, &configured_agent, &prompt);
 
     match call_secretario(&configured_agent, &prompt, false) {
-        Ok(payload) => match parse_agent_json_payload(payload, section, action) {
-            Ok(parsed) => {
-                let enriched = json!({
-                    "status": parsed.get("status").cloned().unwrap_or(json!("success")),
-                    "section": parsed.get("section").cloned().unwrap_or(json!(section)),
-                    "action": parsed.get("action").cloned().unwrap_or(json!(action)),
-                    "data": parsed.get("data").cloned().unwrap_or(json!({})),
-                    "warnings": parsed.get("warnings").cloned().unwrap_or(json!([])),
-                    "meta": {
-                        "agent": configured_agent,
-                        "source": "secretario.py"
-                    }
-                });
-                enriched.to_string()
+        Ok(payload) => {
+            // Registrar la respuesta
+            let duration = start_time.elapsed().as_millis() as u64;
+            logger.log_response(&log_filename.unwrap_or_default(), &payload, true, Some(duration));
+            
+            match parse_agent_json_payload(payload, section, action, validator, logger, feedback_generator) {
+                Ok(parsed) => {
+                    let enriched = json!({
+                        "status": parsed.get("status").cloned().unwrap_or(json!("success")),
+                        "section": parsed.get("section").cloned().unwrap_or(json!(section)),
+                        "action": parsed.get("action").cloned().unwrap_or(json!(action)),
+                        "data": parsed.get("data").cloned().unwrap_or(json!({})),
+                        "warnings": parsed.get("warnings").cloned().unwrap_or(json!([])),
+                        "meta": {
+                            "agent": configured_agent,
+                            "source": "secretario.py",
+                            "processing_time_ms": duration
+                        }
+                    });
+                    enriched.to_string()
+                }
+                Err(err_payload) => {
+                    // Registrar error
+                    logger.log_error(section, action, &configured_agent, &err_payload.to_string(), Some(&prompt));
+                    err_payload.to_string()
+                }
             }
-            Err(err_payload) => err_payload.to_string(),
-        },
-        Err(err) => json!({
-            "status": "error",
-            "section": section,
-            "action": action,
-            "message": err,
-            "meta": {
-                "agent": configured_agent,
-                "source": "secretario.py"
-            }
-        })
-        .to_string(),
+        }
+        Err(err) => {
+            // Registrar error
+            logger.log_error(section, action, &configured_agent, &err, Some(&prompt));
+            json!({
+                "status": "error",
+                "section": section,
+                "action": action,
+                "message": err,
+                "meta": {
+                    "agent": configured_agent,
+                    "source": "secretario.py"
+                }
+            })
+            .to_string()
+        }
     }
 }
 
 fn main() {
+    // Inicializar componentes de AI
+    let schema_manager = SchemaManager::new();
+    let response_validator = AgentResponseValidator::new();
+    let ai_logger = AgentInteractionLogger::new(AI_LOG_DIR);
+    let feedback_generator = FeedbackGenerator::new();
+    let prompt_builder = PromptBuilder::new();
+    
+    // Verificar que el directorio de logs existe
+    std::fs::create_dir_all(AI_LOG_DIR).ok();
+    
     let server = Server::http(UI_HOST).expect("No se pudo iniciar el servidor");
     println!("Cadiz12 Narrative UI en http://{}", UI_HOST);
 
@@ -933,6 +1011,9 @@ fn main() {
                     action,
                     &project,
                     prompt_for_narrative,
+                    &response_validator,
+                    &ai_logger,
+                    &feedback_generator,
                 );
 
                 let _ = request.respond(json_response(response_body));
@@ -951,6 +1032,9 @@ fn main() {
                     action,
                     &project,
                     prompt_for_story_elements,
+                    &response_validator,
+                    &ai_logger,
+                    &feedback_generator,
                 );
 
                 let _ = request.respond(json_response(response_body));
@@ -969,6 +1053,9 @@ fn main() {
                     action,
                     &project,
                     prompt_for_event,
+                    &response_validator,
+                    &ai_logger,
+                    &feedback_generator,
                 );
 
                 let _ = request.respond(json_response(response_body));
@@ -987,6 +1074,9 @@ fn main() {
                     action,
                     &project,
                     prompt_for_review,
+                    &response_validator,
+                    &ai_logger,
+                    &feedback_generator,
                 );
 
                 let _ = request.respond(json_response(response_body));
@@ -998,7 +1088,16 @@ fn main() {
                     .and_then(|v| v.as_str())
                     .unwrap_or("generate");
                 let project = incoming.get("project").cloned().unwrap_or_else(|| json!({}));
-                let response_body = handle_ai_request("project", "CoordinadorNarrativo", action, &project, prompt_for_project_action);
+                let response_body = handle_ai_request(
+                    "project",
+                    "CoordinadorNarrativo",
+                    action,
+                    &project,
+                    prompt_for_project_action,
+                    &response_validator,
+                    &ai_logger,
+                    &feedback_generator,
+                );
                 let _ = request.respond(json_response(response_body));
             }
             (Method::Post, "/api/ai/characters") => {
@@ -1008,7 +1107,16 @@ fn main() {
                     .and_then(|v| v.as_str())
                     .unwrap_or("propose");
                 let project = incoming.get("project").cloned().unwrap_or_else(|| json!({}));
-                let response_body = handle_ai_request("characters", "CoordinadorNarrativo", action, &project, prompt_for_characters_action);
+                let response_body = handle_ai_request(
+                    "characters",
+                    "CoordinadorNarrativo",
+                    action,
+                    &project,
+                    prompt_for_characters_action,
+                    &response_validator,
+                    &ai_logger,
+                    &feedback_generator,
+                );
                 let _ = request.respond(json_response(response_body));
             }
             (Method::Post, "/api/ai/plots") => {
@@ -1018,7 +1126,16 @@ fn main() {
                     .and_then(|v| v.as_str())
                     .unwrap_or("propose");
                 let project = incoming.get("project").cloned().unwrap_or_else(|| json!({}));
-                let response_body = handle_ai_request("plots", "DiseñadorDeStoryElements", action, &project, prompt_for_plots_action);
+                let response_body = handle_ai_request(
+                    "plots",
+                    "DiseñadorDeStoryElements",
+                    action,
+                    &project,
+                    prompt_for_plots_action,
+                    &response_validator,
+                    &ai_logger,
+                    &feedback_generator,
+                );
                 let _ = request.respond(json_response(response_body));
             }
             (Method::Post, "/api/ai/narrative-elements") => {
@@ -1034,6 +1151,9 @@ fn main() {
                     action,
                     &project,
                     prompt_for_narrative_elements,
+                    &response_validator,
+                    &ai_logger,
+                    &feedback_generator,
                 );
                 let _ = request.respond(json_response(response_body));
             }
