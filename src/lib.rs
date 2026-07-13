@@ -1,18 +1,20 @@
 //! # Cadiz12 SDK Eventos
 //!
-//! SDK de eventos narrativo-políticos para el juego Cádiz 1812.
+//! SDK de eventos narrativo-polticos para el juego Cdiz 1812.
 //! 
 //! Este crate proporciona:
 //! - Tipos del dominio para elementos de guion
-//! - Catálogos de temas, protagonistas, antagonistas, secundarios, escenarios y procedimientos
+//! - Catlogo de temas, protagonistas, antagonistas, secundarios, escenarios y procedimientos
 //! - Estado del mundo y del protagonista
-//! - Matrices de compatibilidad entre categorías
-//! - Algoritmo de selección de eventos basado en puntuaciones ponderadas
-//! - Instanciación de eventos con trazabilidad completa
+//! - Matrices de compatibilidad entre categors
+//! - Algoritmo de seleccin de eventos basado en puntuaciones ponderadas
+//! - Instanciacin de eventos con trazabilidad completa
+//! - Gestión de agentes Mistral para generacin de contenido
 
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+pub mod ai;
 pub mod catalog;
 pub mod compat;
 pub mod domain;
@@ -24,7 +26,8 @@ pub mod runtime;
 pub mod validation;
 pub mod trace;
 
-// Re-exportar módulos principales
+// Re-exportar mdulos principales
+pub use ai::*;
 pub use catalog::*;
 pub use compat::*;
 pub use domain::*;
@@ -36,7 +39,7 @@ pub use runtime::*;
 pub use validation::*;
 pub use trace::*;
 
-/// Versión del SDK
+/// Versin del SDK
 pub const SDK_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Nombre del SDK

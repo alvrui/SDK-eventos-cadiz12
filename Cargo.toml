@@ -25,6 +25,8 @@ strum = "0.25"
 strum_macros = "0.25"
 tiny_http = "0.12"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
+jsonschema = "0.17"  # Validacion de schemas JSON
+chrono = "0.4"      # Timestamps para logging
 
 [dev-dependencies]
 criterion = "0.5"
