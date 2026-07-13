@@ -151,11 +151,14 @@ impl WorldState {
     /// Obtiene el año aproximado basado en la jornada
     pub fn get_approximate_year(&self) -> u32 {
         match self.absolute_journey {
-            0..=100 => 1810,
-            101..=200 => 1811,
-            201..=300 => 1812,
-            301..=400 => 1813,
-            401..=500 => 1814,
+            0..=50 => 1808,
+            51..=100 => 1809,
+            101..=200 => 1810,
+            201..=300 => 1811,
+            301..=400 => 1812,
+            401..=500 => 1813,
+            501..=600 => 1814,
+            601..=700 => 1815,
             _ => 1812,
         }
     }
@@ -163,11 +166,14 @@ impl WorldState {
     /// Obtiene la ventana temporal basada en la jornada
     pub fn get_time_slice(&self) -> TimeSlice {
         match self.absolute_journey {
-            0..=100 => TimeSlice::Y1810,
-            101..=200 => TimeSlice::Y1811,
-            201..=300 => TimeSlice::Y1812,
-            301..=400 => TimeSlice::Y1813,
-            401..=500 => TimeSlice::Y1814,
+            0..=50 => TimeSlice::Y1805_1808,
+            51..=100 => TimeSlice::Y1809,
+            101..=200 => TimeSlice::Y1810,
+            201..=300 => TimeSlice::Y1811,
+            301..=400 => TimeSlice::Y1812,
+            401..=500 => TimeSlice::Y1813,
+            501..=600 => TimeSlice::Y1814,
+            601..=700 => TimeSlice::Y1815_1816,
             _ => TimeSlice::Y1812,
         }
     }
@@ -214,12 +220,54 @@ mod tests {
     }
 
     #[test]
-    fn test_world_state_time_slice() {
+    fn test_world_state_time_slice_all_ranges() {
+        // Test Y1805_1808
+        let state = WorldState::new().with_journey(25);
+        assert_eq!(state.get_time_slice(), TimeSlice::Y1805_1808);
+        
+        // Test Y1809
+        let state = WorldState::new().with_journey(75);
+        assert_eq!(state.get_time_slice(), TimeSlice::Y1809);
+        
+        // Test Y1810
         let state = WorldState::new().with_journey(150);
+        assert_eq!(state.get_time_slice(), TimeSlice::Y1810);
+        
+        // Test Y1811
+        let state = WorldState::new().with_journey(250);
         assert_eq!(state.get_time_slice(), TimeSlice::Y1811);
         
-        let state = WorldState::new().with_journey(250);
+        // Test Y1812
+        let state = WorldState::new().with_journey(350);
         assert_eq!(state.get_time_slice(), TimeSlice::Y1812);
+        
+        // Test Y1813
+        let state = WorldState::new().with_journey(450);
+        assert_eq!(state.get_time_slice(), TimeSlice::Y1813);
+        
+        // Test Y1814
+        let state = WorldState::new().with_journey(550);
+        assert_eq!(state.get_time_slice(), TimeSlice::Y1814);
+        
+        // Test Y1815_1816
+        let state = WorldState::new().with_journey(650);
+        assert_eq!(state.get_time_slice(), TimeSlice::Y1815_1816);
+        
+        // Test default (fallback)
+        let state = WorldState::new().with_journey(1000);
+        assert_eq!(state.get_time_slice(), TimeSlice::Y1812);
+    }
+
+    #[test]
+    fn test_world_state_approximate_year() {
+        let state = WorldState::new().with_journey(25);
+        assert_eq!(state.get_approximate_year(), 1808);
+        
+        let state = WorldState::new().with_journey(75);
+        assert_eq!(state.get_approximate_year(), 1809);
+        
+        let state = WorldState::new().with_journey(150);
+        assert_eq!(state.get_approximate_year(), 1810);
     }
 
     #[test]

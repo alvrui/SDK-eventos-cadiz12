@@ -6,6 +6,7 @@ use crate::domain::enums::*;
 use crate::domain::ids::*;
 use crate::domain::structs::*;
 use anyhow::{Context, Result};
+use std::collections::HashSet;
 
 /// Validador de catálogos y configuración
 #[derive(Debug, Clone)]
@@ -196,6 +197,113 @@ impl CompatibilityValidator {
     }
 }
 
+/// Validador de elementos narrativos unificados
+#[derive(Debug, Clone)]
+pub struct NarrativeElementsValidator;
+
+impl NarrativeElementsValidator {
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Validar elementos narrativos
+    pub fn validate_narrative_elements(&self, elements: &NarrativeElements) -> Result<(), Vec<String>> {
+        let mut errors = Vec::new();
+        
+        // Validar IDs únicos
+        self.validate_unique_ids(elements, &mut errors);
+        
+        // Validar que todos los themes tienen time_window y act_bias
+        self.validate_themes_required_fields(elements, &mut errors);
+        
+        // Validar que todos los protagonists tienen eligible_profiles o eligible_positions
+        self.validate_protagonists_required_fields(elements, &mut errors);
+        
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+
+    /// Validar que todos los elementos tienen IDs únicas
+    fn validate_unique_ids(&self, elements: &NarrativeElements, errors: &mut Vec<String>) {
+        let mut ids = HashSet::new();
+        
+        for theme in &elements.themes {
+            if !ids.insert(&theme.base.id.0) {
+                errors.push(format!("Duplicate ID in themes: {}", theme.base.id.0));
+            }
+        }
+        
+        for protagonist in &elements.protagonists {
+            if !ids.insert(&protagonist.base.id.0) {
+                errors.push(format!("Duplicate ID in protagonists: {}", protagonist.base.id.0));
+            }
+        }
+        
+        for antagonist in &elements.antagonists {
+            if !ids.insert(&antagonist.base.id.0) {
+                errors.push(format!("Duplicate ID in antagonists: {}", antagonist.base.id.0));
+            }
+        }
+        
+        for secondary in &elements.secondaries {
+            if !ids.insert(&secondary.base.id.0) {
+                errors.push(format!("Duplicate ID in secondaries: {}", secondary.base.id.0));
+            }
+        }
+        
+        for scenario in &elements.scenarios {
+            if !ids.insert(&scenario.base.id.0) {
+                errors.push(format!("Duplicate ID in scenarios: {}", scenario.base.id.0));
+            }
+        }
+        
+        for procedure in &elements.procedures {
+            if !ids.insert(&procedure.base.id.0) {
+                errors.push(format!("Duplicate ID in procedures: {}", procedure.base.id.0));
+            }
+        }
+        
+        for resource in &elements.dramatic_resources {
+            if !ids.insert(&resource.base.id.0) {
+                errors.push(format!("Duplicate ID in dramatic_resources: {}", resource.base.id.0));
+            }
+        }
+        
+        for pressure in &elements.social_pressures {
+            if !ids.insert(&pressure.base.id.0) {
+                errors.push(format!("Duplicate ID in social_pressures: {}", pressure.base.id.0));
+            }
+        }
+    }
+
+    /// Validar que todos los themes tienen time_window y act_bias
+    fn validate_themes_required_fields(&self, elements: &NarrativeElements, errors: &mut Vec<String>) {
+        for theme in &elements.themes {
+            if theme.base.time_window.is_empty() {
+                errors.push(format!("Theme {} has no time_window", theme.base.id.0));
+            }
+            if theme.base.act_bias.is_empty() {
+                errors.push(format!("Theme {} has no act_bias", theme.base.id.0));
+            }
+        }
+    }
+
+    /// Validar que todos los protagonists tienen eligible_profiles o eligible_positions
+    fn validate_protagonists_required_fields(&self, elements: &NarrativeElements, errors: &mut Vec<String>) {
+        for protagonist in &elements.protagonists {
+            if protagonist.eligible_profiles.is_empty() && protagonist.eligible_positions.is_empty() {
+                errors.push(format!(
+                    "Protagonist {} has no eligible_profiles or eligible_positions",
+                    protagonist.base.id.0
+                ));
+            }
+        }
+    }
+}
+
 /// Validador de instancias de evento
 #[derive(Debug, Clone)]
 pub struct EventInstanceValidator;
@@ -249,6 +357,7 @@ impl EventInstanceValidator {
 pub struct FullValidator {
     catalog_validator: CatalogValidator,
     compatibility_validator: CompatibilityValidator,
+    narrative_elements_validator: NarrativeElementsValidator,
     event_validator: EventInstanceValidator,
 }
 
@@ -257,6 +366,7 @@ impl FullValidator {
         Self {
             catalog_validator: CatalogValidator::new(),
             compatibility_validator: CompatibilityValidator::new(),
+            narrative_elements_validator: NarrativeElementsValidator::new(),
             event_validator: EventInstanceValidator::new(),
         }
     }
@@ -289,6 +399,11 @@ impl FullValidator {
         } else {
             Err(all_errors)
         }
+    }
+
+    /// Validar elementos narrativos
+    pub fn validate_narrative_elements(&self, elements: &NarrativeElements) -> Result<(), Vec<String>> {
+        self.narrative_elements_validator.validate_narrative_elements(elements)
     }
 }
 
@@ -354,6 +469,28 @@ mod tests {
         assert!(result.is_err());
         let errors = result.unwrap_err();
         assert!(errors.iter().any(|e| e.contains("not found in catalog")));
+    }
+
+    #[test]
+    fn test_narrative_elements_validator() {
+        let validator = NarrativeElementsValidator::new();
+        
+        let mut elements = NarrativeElements::new();
+        elements = elements.with_theme(Theme::new("theme_1"));
+        elements = elements.with_theme(Theme::new("theme_2"));
+        
+        let result = validator.validate_narrative_elements(&elements);
+        assert!(result.is_ok());
+        
+        // Test con IDs duplicados
+        let mut elements_with_dup = NarrativeElements::new();
+        elements_with_dup = elements_with_dup.with_theme(Theme::new("id_1"));
+        elements_with_dup = elements_with_dup.with_theme(Theme::new("id_1"));
+        
+        let result = validator.validate_narrative_elements(&elements_with_dup);
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("Duplicate ID")));
     }
 
     #[test]

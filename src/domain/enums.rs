@@ -22,6 +22,7 @@ pub enum ScriptElementCategory {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display, EnumString)]
 #[strum(serialize_all = "snake_case")]
 pub enum HistoricalScope {
+    StrictHistorical,
     PlausibleDocumented,
     PlausibleInferred,
     ExceptionalButVerisimilar,
@@ -301,6 +302,7 @@ mod tests {
     #[test]
     fn test_enum_display() {
         assert_eq!(format!("{}", HistoricalScope::PlausibleDocumented), "plausible_documented");
+        assert_eq!(format!("{}", HistoricalScope::StrictHistorical), "strict_historical");
         assert_eq!(format!("{}", SceneTemplateType::AInstitutionalSession), "a_institutional_session");
         assert_eq!(format!("{}", ProcedureKind::DebatePlenary), "debate_plenary");
     }
@@ -308,6 +310,7 @@ mod tests {
     #[test]
     fn test_enum_from_str() {
         assert_eq!("plausible_documented".parse::<HistoricalScope>().ok(), Some(HistoricalScope::PlausibleDocumented));
+        assert_eq!("strict_historical".parse::<HistoricalScope>().ok(), Some(HistoricalScope::StrictHistorical));
         assert_eq!("a_institutional_session".parse::<SceneTemplateType>().ok(), Some(SceneTemplateType::AInstitutionalSession));
     }
 }

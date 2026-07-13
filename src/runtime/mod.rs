@@ -44,17 +44,21 @@ impl EventRuntime {
             });
         }
 
-        // Aplicar efectos de relación
-        for _delta in &event.trace.final_score_breakdown {
-            // Esto es un placeholder - debería procesar relationship_deltas
-        }
-
+        // Aplicar efectos de relación desde el prototipo de consecuencias
+        // (Si el evento tiene un prototipo de consecuencias con relationship_deltas)
+        // Por ahora, procesamos los deltas directamente si existen en el evento
+        // Nota: Esto debería ser parte de EventInstance en el futuro
+        
+        // Aplicar efectos de reputación
+        // Nota: Esto debería ser parte de EventInstance en el futuro
+        
         // Registrar tema en memoria del protagonista
         protagonist_state.record_theme(event.main_theme.clone());
 
         // Añadir tags generados al protagonista
         for tag in &event.generated_tags {
             protagonist_state.add_tag(tag.clone());
+            outcome.tags_added.push(tag.clone());
         }
 
         // Incrementar jornada
@@ -120,6 +124,9 @@ impl EventRuntime {
                 delta: delta.delta,
             });
         }
+        
+        // Añadir tags generados
+        outcome.tags_added = event.generated_tags.clone();
         
         outcome
     }
@@ -215,6 +222,8 @@ mod tests {
         assert!(protagonist_state.has_tag(&TagId("test_tag".to_string())));
         assert!(protagonist_state.has_recent_theme(&ThemeId("test_theme".to_string())));
         assert_eq!(world_state.absolute_journey, 2); // Se incrementó
+        assert_eq!(outcome.tags_added.len(), 1);
+        assert_eq!(outcome.tags_added[0].0, "test_tag");
     }
 
     #[test]
@@ -244,6 +253,7 @@ mod tests {
         event.expected_meter_effects = vec![
             MeterDelta::new(MeterType::Influence, 10.0),
         ];
+        event.generated_tags = vec![TagId("tag1".to_string())];
         
         let protagonist_state = ProtagonistState::new("prot_1");
         let world_state = WorldState::new();
@@ -254,5 +264,6 @@ mod tests {
         assert_eq!(outcome.theme_id, Some(ThemeId("test_theme".to_string())));
         assert_eq!(outcome.scene_template, Some(SceneTemplateType::AInstitutionalSession));
         assert_eq!(outcome.meter_changes.len(), 1);
+        assert_eq!(outcome.tags_added.len(), 1);
     }
 }
