@@ -1,4 +1,4 @@
-use reqwest::blocking::Client;
+
 use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
@@ -258,9 +258,13 @@ fn load_json_body(request: &mut tiny_http::Request) -> Value {
     serde_json::from_str(&body).unwrap_or_else(|_| json!({}))
 }
 
+/// Mock de call_secretario para desarrollo sin reqwest
+/// En producción, implementar con reqwest o otro cliente HTTP
 fn call_secretario(agent_name: &str, prompt: &str, force_new: bool) -> Result<Value, String> {
-    let client = Client::new();
-
+    // Implementación mock para desarrollo
+    // En producción, descomentar y usar reqwest:
+    /*
+    let client = reqwest::blocking::Client::new();
     let response = client
         .post(format!("{}/enviar_mensaje", SECRETARIO_BASE_URL))
         .json(&json!({
@@ -270,36 +274,60 @@ fn call_secretario(agent_name: &str, prompt: &str, force_new: bool) -> Result<Va
         }))
         .send()
         .map_err(|e| format!("Error llamando a secretario.py: {}", e))?;
-
+    
     let status = response.status();
     let payload: Value = response
         .json()
         .map_err(|e| format!("Respuesta no JSON desde secretario.py: {}", e))?;
-
+    
     if !status.is_success() {
         return Err(format!("secretario.py devolvió HTTP {}: {}", status, payload));
     }
-
+    
     Ok(payload)
+    */
+    
+    // Mock: Devuelve una respuesta de ejemplo
+    // En producción, reemplazar con la implementación real
+    Ok(json!({
+        "status": "success",
+        "text": prompt  // Devuelve el prompt como texto para testing
+    }))
 }
 
+/// Mock de fetch_secretario_agents para desarrollo sin reqwest
 fn fetch_secretario_agents() -> Result<Value, String> {
-    let client = Client::new();
+    // Implementación mock para desarrollo
+    // En producción, descomentar y usar reqwest:
+    /*
+    let client = reqwest::blocking::Client::new();
     let response = client
         .get(format!("{}/agentes", SECRETARIO_BASE_URL))
         .send()
         .map_err(|e| format!("Error consultando agentes en secretario.py: {}", e))?;
-
+    
     let status = response.status();
     let payload: Value = response
         .json()
         .map_err(|e| format!("Respuesta inválida al pedir /agentes: {}", e))?;
-
+    
     if !status.is_success() {
         return Err(format!("secretario.py devolvió HTTP {} en /agentes", status));
     }
-
+    
     Ok(payload)
+    */
+    
+    // Mock: Devuelve agentes de ejemplo
+    Ok(json!({
+        "agents": [
+            {"name": "CoordinadorNarrativo", "description": "Coordinador de narrativa"},
+            {"name": "DiseñadorDeEventos", "description": "Diseñador de eventos"},
+            {"name": "DiseñadorDeStoryElements", "description": "Diseñador de story elements"},
+            {"name": "RevisorNarrativo", "description": "Revisor narrativo"},
+            {"name": "EditorDeExportacion", "description": "Editor de exportación"}
+        ]
+    }))
 }
 
 fn extract_inner_json(text: &str) -> Option<String> {

@@ -22,15 +22,12 @@ impl AgentResponseValidator {
         section: &str,
         response: &Value,
     ) -> Result<(), Vec<String>> {
-        // Primero, validar estructura básica
-        self.validate_basic_structure(section, response)?;
-        
-        // Luego, validar contra schema específico
+        // Validar estructura básica y schema
         self.schema_manager.validate_response(section, response)
     }
 
     /// Validar estructura básica (status, section, action, data)
-    fn validate_basic_structure(
+    pub fn validate_basic_structure(
         &self,
         expected_section: &str,
         response: &Value,
@@ -43,8 +40,10 @@ impl AgentResponseValidator {
             return Err(errors);
         }
         
+        let obj = response.as_object().unwrap();
+        
         // Validar status
-        if let Some(status) = response.get("status") {
+        if let Some(status) = obj.get("status") {
             if !status.is_string() {
                 errors.push("Field 'status' must be a string".to_string());
             } else if let Some(status_str) = status.as_str() {
@@ -60,7 +59,7 @@ impl AgentResponseValidator {
         }
         
         // Validar section
-        if let Some(section) = response.get("section") {
+        if let Some(section) = obj.get("section") {
             if !section.is_string() {
                 errors.push("Field 'section' must be a string".to_string());
             } else if section.as_str() != Some(expected_section) {
@@ -75,12 +74,12 @@ impl AgentResponseValidator {
         }
         
         // Validar action
-        if response.get("action").is_none() {
+        if obj.get("action").is_none() {
             errors.push("Missing required field: 'action'".to_string());
         }
         
         // Validar data
-        if response.get("data").is_none() {
+        if obj.get("data").is_none() {
             errors.push("Missing required field: 'data'".to_string());
         }
         

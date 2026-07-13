@@ -445,36 +445,36 @@ impl NarrativeElements {
         self
     }
 
-    /// Obtener todos los elementos como un vector plano
-    pub fn all_elements(&self) -> Vec<&dyn ScriptElementBase> {
-        let mut all: Vec<&dyn ScriptElementBase> = Vec::new();
+    /// Obtener todos los IDs de elementos
+    pub fn all_element_ids(&self) -> Vec<&ElementId> {
+        let mut ids: Vec<&ElementId> = Vec::new();
         
         for theme in &self.themes {
-            all.push(&theme.base);
+            ids.push(&theme.base.id);
         }
         for protagonist in &self.protagonists {
-            all.push(&protagonist.base);
+            ids.push(&protagonist.base.id);
         }
         for antagonist in &self.antagonists {
-            all.push(&antagonist.base);
+            ids.push(&antagonist.base.id);
         }
         for secondary in &self.secondaries {
-            all.push(&secondary.base);
+            ids.push(&secondary.base.id);
         }
         for scenario in &self.scenarios {
-            all.push(&scenario.base);
+            ids.push(&scenario.base.id);
         }
         for procedure in &self.procedures {
-            all.push(&procedure.base);
+            ids.push(&procedure.base.id);
         }
         for resource in &self.dramatic_resources {
-            all.push(&resource.base);
+            ids.push(&resource.base.id);
         }
         for pressure in &self.social_pressures {
-            all.push(&pressure.base);
+            ids.push(&pressure.base.id);
         }
         
-        all
+        ids
     }
 
     /// Validar que todos los elementos tienen IDs únicas
@@ -484,51 +484,9 @@ impl NarrativeElements {
         let mut errors = Vec::new();
         let mut ids = HashSet::new();
         
-        for theme in &self.themes {
-            if !ids.insert(&theme.base.id.0) {
-                errors.push(format!("Duplicate ID: {}", theme.base.id.0));
-            }
-        }
-        
-        for protagonist in &self.protagonists {
-            if !ids.insert(&protagonist.base.id.0) {
-                errors.push(format!("Duplicate ID: {}", protagonist.base.id.0));
-            }
-        }
-        
-        for antagonist in &self.antagonists {
-            if !ids.insert(&antagonist.base.id.0) {
-                errors.push(format!("Duplicate ID: {}", antagonist.base.id.0));
-            }
-        }
-        
-        for secondary in &self.secondaries {
-            if !ids.insert(&secondary.base.id.0) {
-                errors.push(format!("Duplicate ID: {}", secondary.base.id.0));
-            }
-        }
-        
-        for scenario in &self.scenarios {
-            if !ids.insert(&scenario.base.id.0) {
-                errors.push(format!("Duplicate ID: {}", scenario.base.id.0));
-            }
-        }
-        
-        for procedure in &self.procedures {
-            if !ids.insert(&procedure.base.id.0) {
-                errors.push(format!("Duplicate ID: {}", procedure.base.id.0));
-            }
-        }
-        
-        for resource in &self.dramatic_resources {
-            if !ids.insert(&resource.base.id.0) {
-                errors.push(format!("Duplicate ID: {}", resource.base.id.0));
-            }
-        }
-        
-        for pressure in &self.social_pressures {
-            if !ids.insert(&pressure.base.id.0) {
-                errors.push(format!("Duplicate ID: {}", pressure.base.id.0));
+        for id in self.all_element_ids() {
+            if !ids.insert(id) {
+                errors.push(format!("Duplicate ID: {}", id.0));
             }
         }
         

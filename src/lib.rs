@@ -26,17 +26,38 @@ pub mod runtime;
 pub mod validation;
 pub mod trace;
 
-// Re-exportar mdulos principales
-pub use ai::*;
-pub use catalog::*;
-pub use compat::*;
-pub use domain::*;
-pub use state::*;
+// Re-exportar mdulos principales de forma especfica para evitar ambigedad
+pub use ai::schemas::*;
+pub use ai::validator::*;
+pub use ai::logger::*;
+pub use ai::feedback::*;
+pub use ai::prompts::*;
+
+pub use catalog::catalog::*;
+pub use catalog::loader::*;
+pub use catalog::theme_bindings::*;
+
+pub use compat::matrices::*;
+pub use compat::loader::*;
+
+pub use domain::ids::*;
+pub use domain::enums::*;
+pub use domain::structs::*;
+
+pub use state::world_state::*;
+pub use state::protagonist_state::*;
+pub use state::relationship_state::*;
+
 pub use scoring::*;
+
 pub use selector::*;
+
 pub use templates::*;
+
 pub use runtime::*;
+
 pub use validation::*;
+
 pub use trace::*;
 
 /// Versin del SDK

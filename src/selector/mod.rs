@@ -9,7 +9,7 @@ use crate::scoring::ScoreCalculator;
 use crate::state::protagonist_state::ProtagonistState;
 use crate::state::world_state::{GameContext, WorldState};
 use crate::trace::{SelectionTrace, ThemeCandidateTrace};
-use rand::{Rng, SeedableRng};
+use rand::{prelude::SliceRandom,Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use std::collections::HashMap;
 
@@ -271,7 +271,7 @@ impl EventSelector {
         
         // Filtrar secundarios por compatibilidad con el tema
         let mut compatible_secondaries: Vec<SecondaryId> = self.catalogs.secondaries.secondaries.iter()
-            .filter(|(sec_id, secondary)| {
+            .filter(|(_sec_id, secondary)| {
                 // Verificar que el secundario tiene al menos un stake_axis en común con el tema
                 let has_common_stake = theme.base.stakes_axis.iter()
                     .any(|stake| secondary.base.stakes_axis.contains(stake));
@@ -318,7 +318,7 @@ impl EventSelector {
         
         // Filtrar procedimientos por compatibilidad con el tema
         let compatible_procedures: Vec<ProcedureId> = self.catalogs.procedures.procedures.iter()
-            .filter(|(proc_id, procedure)| {
+            .filter(|(_proc_id, procedure)| {
                 // Verificar que el procedimiento tiene al menos un stake_axis en común con el tema
                 let has_common_stake = theme.base.stakes_axis.iter()
                     .any(|stake| procedure.base.stakes_axis.contains(stake));

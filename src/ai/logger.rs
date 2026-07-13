@@ -97,7 +97,7 @@ impl AgentInteractionLogger {
             serde_json::to_string_pretty(response).unwrap_or_else(|_| "Invalid JSON".to_string())
         );
         
-        if let Err(e) = self.write_to_file(filename, &log_entry) {
+        if let Err(e) = self.write_to_file(Path::new(filename), &log_entry) {
             log::error!("Failed to write agent response log: {}", e);
         }
     }
@@ -189,15 +189,13 @@ impl AgentInteractionLogger {
 
     /// Escribir en archivo con rotación si es necesario
     fn write_to_file(&self, filename: &Path, content: &str) -> std::io::Result<()> {
-        let filename = filename.to_string_lossy().to_string();
-        
         // Verificar si el archivo existe y es muy grande
-        if Path::new(&filename).exists() {
-            if let Ok(metadata) = fs::metadata(&filename) {
+        if filename.exists() {
+            if let Ok(metadata) = fs::metadata(filename) {
                 if metadata.len() >= self.max_log_size as u64 {
                     // Rotar el archivo
-                    let backup_filename = format!("{}.old", filename);
-                    fs::rename(&filename, backup_filename)?;
+                    let backup_filename = format!("{}.old", filename.to_string_lossy());
+                    fs::rename(filename, backup_filename)?;
                 }
             }
         }
