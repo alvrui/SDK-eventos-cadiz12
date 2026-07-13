@@ -134,9 +134,13 @@ fn migrate_project_shape(v: &mut serde_json::Value) {
         }
         if v.get("plots").is_none() {
             if let Some(se) = v.get("story_elements").cloned() {
+                // Migrar story_elements a plots
+                v["plots"] = se;
+                // También guardar en legacy por retrocompatibilidad
                 v["legacyStoryElements"] = se;
+            } else {
+                v["plots"] = serde_json::json!([]);
             }
-            v["plots"] = serde_json::json!([]);
         }
         if v.get("projectCharacters").is_none() {
             v["projectCharacters"] = serde_json::json!([]);
@@ -260,7 +264,27 @@ fn parse_agent_json_payload(
         }));
     }
 
-    // 2. Candidatos de texto: text y outputs[0]
+    // 2. Intentar extraer data directamente si existe
+    if let Some(data) = payload.get("data").cloned() {
+        if let Ok(parsed_data) = serde_json::from_value::<serde_json::Value>(data) {
+            let mut enriched = parsed_data;
+            if enriched.get("status").is_none() {
+                enriched["status"] = json!("success");
+            }
+            if enriched.get("section").is_none() {
+                enriched["section"] = json!(section);
+            }
+            if enriched.get("action").is_none() {
+                enriched["action"] = json!(action);
+            }
+            if enriched.get("warnings").is_none() {
+                enriched["warnings"] = json!([]);
+            }
+            return Ok(enriched);
+        }
+    }
+
+    // 2b. Candidatos de texto: text y outputs[0]
     let mut candidates: Vec<String> = Vec::new();
 
     if let Some(t) = payload.get("text").and_then(|v| v.as_str()) {
@@ -444,13 +468,31 @@ Devuelve este formato exacto:
 }
 
 fn get_agent_name(project: &Value, key: &str, fallback: &str) -> String {
-    project
+    // Intentar con la clave exacta primero
+    if let Some(agent) = project
         .get("settings")
         .and_then(|v| v.get("agents"))
         .and_then(|v| v.get(key))
-        .and_then(|v| v.as_str())
-        .unwrap_or(fallback)
-        .to_string()
+        .and_then(|v| v.as_str()) {
+        return agent.to_string();
+    }
+    
+    // Intentar con clave alternativa (storyelements -> story_elements)
+    let alt_key = match key {
+        "story_elements" => "storyelements",
+        "storyelements" => "story_elements",
+        _ => key,
+    };
+    
+    if let Some(agent) = project
+        .get("settings")
+        .and_then(|v| v.get("agents"))
+        .and_then(|v| v.get(alt_key))
+        .and_then(|v| v.as_str()) {
+        return agent.to_string();
+    }
+    
+    fallback.to_string()
 }
 
 fn prompt_for_narrative(action: &str, project: &Value) -> String {

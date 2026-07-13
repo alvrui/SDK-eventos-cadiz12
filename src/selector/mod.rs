@@ -262,8 +262,39 @@ impl EventSelector {
             return binding_secondaries;
         }
         
-        // Si no hay bindings, seleccionar aleatoriamente del catálogo
-        // Por ahora, devolvemos vacío
+        // Si no hay bindings, seleccionar secundarios compatibles con el tema
+        // Basado en los faction_vectors y stakes_axis del tema
+        let theme = match self.catalogs.themes.get(theme_id) {
+            Some(t) => t,
+            None => return vec![],
+        };
+        
+        // Filtrar secundarios por compatibilidad con el tema
+        let mut compatible_secondaries: Vec<SecondaryId> = self.catalogs.secondaries.secondaries.iter()
+            .filter(|(sec_id, secondary)| {
+                // Verificar que el secundario tiene al menos un stake_axis en común con el tema
+                let has_common_stake = theme.base.stakes_axis.iter()
+                    .any(|stake| secondary.base.stakes_axis.contains(stake));
+                
+                // Verificar que el secundario tiene al menos un faction_vector en común con el tema
+                let has_common_faction = theme.base.faction_vectors.iter()
+                    .any(|faction| secondary.base.faction_vectors.contains(faction));
+                
+                has_common_stake || has_common_faction || secondary.base.faction_vectors.is_empty()
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+        
+        // Si hay secundarios compatibles, seleccionar hasta 2 aleatoriamente
+        if !compatible_secondaries.is_empty() {
+            let mut rng = rand::thread_rng();
+            let num_to_select = compatible_secondaries.len().min(2);
+            let indices: Vec<usize> = (0..compatible_secondaries.len()).collect();
+            let selected_indices: Vec<usize> = indices.choose_multiple(&mut rng, num_to_select).cloned().collect();
+            return selected_indices.iter().map(|&idx| compatible_secondaries[idx].clone()).collect();
+        }
+        
+        // Fallback final: devolver vacío
         vec![]
     }
 
@@ -273,12 +304,49 @@ impl EventSelector {
         let binding_procedures = self.theme_bindings.get_procedures(theme_id);
         
         if !binding_procedures.is_empty() {
-            // Seleccionar el primero (o podríamos hacerlo aleatorio)
-            return binding_procedures[0].clone();
+            // Seleccionar aleatoriamente entre los bindings
+            let mut rng = rand::thread_rng();
+            let idx = rng.gen_range(0..binding_procedures.len());
+            return binding_procedures[idx].clone();
         }
         
-        // Si no hay bindings, seleccionar uno por defecto
-        ProcedureId("proc_debate_pleno_cortes".to_string())
+        // Si no hay bindings, seleccionar procedimiento compatible con el tema
+        let theme = match self.catalogs.themes.get(theme_id) {
+            Some(t) => t,
+            None => return ProcedureId("proc_debate_pleno_cortes".to_string()),
+        };
+        
+        // Filtrar procedimientos por compatibilidad con el tema
+        let compatible_procedures: Vec<ProcedureId> = self.catalogs.procedures.procedures.iter()
+            .filter(|(proc_id, procedure)| {
+                // Verificar que el procedimiento tiene al menos un stake_axis en común con el tema
+                let has_common_stake = theme.base.stakes_axis.iter()
+                    .any(|stake| procedure.base.stakes_axis.contains(stake));
+                
+                // Verificar que el procedimiento tiene al menos un faction_vector en común con el tema
+                let has_common_faction = theme.base.faction_vectors.iter()
+                    .any(|faction| procedure.base.faction_vectors.contains(faction));
+                
+                has_common_stake || has_common_faction || procedure.base.faction_vectors.is_empty()
+            })
+            .map(|(id, _)| id.clone())
+            .collect();
+        
+        if !compatible_procedures.is_empty() {
+            // Seleccionar aleatoriamente entre los compatibles
+            let mut rng = rand::thread_rng();
+            let idx = rng.gen_range(0..compatible_procedures.len());
+            return compatible_procedures[idx].clone();
+        }
+        
+        // Fallback final: procedimiento por defecto basado en el tono del tema
+        match theme.base.tone {
+            Tone::Solemn | Tone::Patriotic | Tone::Funereal => ProcedureId("proc_debate_pleno_cortes".to_string()),
+            Tone::Intimate | Tone::Conspiratorial => ProcedureId("proc_visita_privada_americano".to_string()),
+            Tone::Anxious | Tone::Tense | Tone::Combative => ProcedureId("proc_crisis_publica_bombardeo".to_string()),
+            Tone::Satirical | Tone::Polemical => ProcedureId("proc_edicion_de_la_tarde".to_string()),
+            _ => ProcedureId("proc_debate_pleno_cortes".to_string()),
+        }
     }
 
     /// Derivar plantilla de escena a partir del procedimiento
@@ -349,13 +417,19 @@ impl EventSelector {
     /// Obtener razones para la selección de secundarios
     fn get_secondary_reasons(&self, secondaries: &[SecondaryId]) -> Vec<String> {
         secondaries.iter()
-            .map(|sec_id| format!("Secondary {} selected from theme bindings", sec_id.0))
+            .map(|sec_id| {
+                if self.theme_bindings.bindings.values().any(|b| b.secondary_ids.contains(sec_id)) {
+                    format!("Secondary {} selected from theme bindings", sec_id.0)
+                } else {
+                    format!("Secondary {} selected by compatibility fallback", sec_id.0)
+                }
+            })
             .collect()
     }
 
     /// Obtener razones para la selección de procedimiento
     fn get_procedure_reasons(&self, procedure_id: &ProcedureId) -> Vec<String> {
-        vec![format!("Procedure {} selected from theme bindings", procedure_id.0)]
+        vec![format!("Procedure {} selected from theme bindings or compatibility fallback", procedure_id.0)]
     }
 }
 
@@ -408,7 +482,7 @@ mod tests {
         let compatibility_set = CompatibilitySet::new();
         let selector = EventSelector::new(catalogs, compatibility_set, None);
         
-        let world_state = WorldState::new().with_journey(50); // Y1810
+        let world_state = WorldState::new().with_journey(150); // Y1810
         let protagonist_state = ProtagonistState::new("prot_1");
         
         let valid_themes = selector.filter_valid_themes(&world_state, &protagonist_state);
@@ -450,5 +524,27 @@ mod tests {
         assert_eq!(secondaries.len(), 2);
         assert!(secondaries.contains(&SecondaryId("sec_arguelles".to_string())));
         assert!(secondaries.contains(&SecondaryId("sec_muoz_torrero".to_string())));
+    }
+
+    #[test]
+    fn test_select_procedure() {
+        let mut catalogs = Catalogs::new();
+        
+        // Añadir bindings
+        let mut bindings = ThemeBindingsCatalog::new();
+        let theme_id = ThemeId("tema_1".to_string());
+        let theme_bindings = ThemeBindings::new()
+            .with_procedure("proc_debate_pleno_cortes")
+            .with_procedure("proc_visita_privada_americano");
+        bindings.add(theme_id.clone(), theme_bindings);
+        catalogs.theme_bindings = bindings;
+        
+        let compatibility_set = CompatibilitySet::new();
+        let selector = EventSelector::new(catalogs, compatibility_set, None);
+        
+        let procedure = selector.select_procedure(&theme_id);
+        
+        // Debería ser uno de los dos procedimientos en bindings
+        assert!(procedure.0 == "proc_debate_pleno_cortes" || procedure.0 == "proc_visita_privada_americano");
     }
 }
