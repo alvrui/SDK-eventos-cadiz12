@@ -523,6 +523,25 @@ Devuelve entre 3 y 8 elementos si la acción es de propuesta general."#,
 }
 
 fn prompt_for_event(action: &str, project: &Value) -> String {
+    let selected_id = project
+        .get("selectedStoryElementId")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    
+    let story_element_context = if !selected_id.is_empty() {
+        if let Some(story_elements) = project.get("storyelements").and_then(|v| v.as_array()) {
+            if let Some(element) = story_elements.iter().find(|e| e.get("id").and_then(|v| v.as_str()) == Some(selected_id)) {
+                format!("\n\nStory Element seleccionado:\n{}", serde_json::to_string_pretty(element).unwrap_or_else(|_| "{}".to_string()))
+            } else {
+                format!("\n\nStory Element ID seleccionado: {}", selected_id)
+            }
+        } else {
+            format!("\n\nStory Element ID seleccionado: {}", selected_id)
+        }
+    } else {
+        String::new()
+    };
+
     format!(
         r#"Devuelve SOLO JSON válido. No uses markdown. No expliques nada fuera del JSON.
 
@@ -530,7 +549,7 @@ Estás trabajando para Cadiz12 en la sección de eventos.
 Acción solicitada: {action}
 
 Contexto del proyecto:
-{project_context}
+{project_context}{story_element_context}
 
 Devuelve este formato exacto:
 {{
@@ -541,7 +560,7 @@ Devuelve este formato exacto:
     "id": "string",
     "label": "string",
     "title": "string",
-    "story_element_id": "string",
+    "story_element_id": "{selected_id}",
     "body_text": "string",
     "flavor_text": "string",
     "choices": [
@@ -559,7 +578,9 @@ Devuelve este formato exacto:
 
 Si la acción es proponer textos o decisiones, sigue devolviendo un evento completo para que la UI lo pueda aplicar sin lógica extra."#,
         action = action,
-        project_context = serde_json::to_string_pretty(project).unwrap_or_else(|_| "{}".to_string())
+        project_context = serde_json::to_string_pretty(project).unwrap_or_else(|_| "{}".to_string()),
+        story_element_context = story_element_context,
+        selected_id = selected_id
     )
 }
 

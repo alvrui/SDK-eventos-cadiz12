@@ -1270,7 +1270,7 @@ async function runAi(section, action) {
 
         if (section === 'event' && action === 'generate_from_story_element') {
             const selectedStoryId = document.getElementById('eventStoryElementLink')?.value;
-            if (selectedStoryId) payloadProject.selectedstoryelementid = selectedStoryId;
+            if (selectedStoryId) payloadProject.selectedStoryElementId = selectedStoryId;
         }
 
         const response = await apiPost(endpoint, {
