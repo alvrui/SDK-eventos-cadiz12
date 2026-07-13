@@ -145,7 +145,94 @@ fn migrate_project_shape(v: &mut serde_json::Value) {
         if v.get("projectCharacters").is_none() {
             v["projectCharacters"] = serde_json::json!([]);
         }
+        
+        // Migrar a narrative_elements (unificación de plots y story_elements)
+        migrate_to_narrative_elements(v);
     }
+}
+
+/// Migrar proyectos antiguos a la estructura unificada narrative_elements
+fn migrate_to_narrative_elements(v: &mut serde_json::Value) {
+    // Si ya existe narrative_elements, no hacer nada
+    if v.get("narrative_elements").is_some() {
+        return;
+    }
+    
+    // Crear estructura narrative_elements
+    let mut narrative_elements = serde_json::json!({
+        "themes": [],
+        "protagonists": [],
+        "antagonists": [],
+        "secondaries": [],
+        "scenarios": [],
+        "procedures": [],
+        "dramatic_resources": [],
+        "social_pressures": []
+    });
+    
+    // Migrar desde story_elements (si existe)
+    if let Some(story_elements) = v.get("story_elements").and_then(|v| v.as_array()) {
+        for element in story_elements {
+            if let Some(element_type) = element.get("type").and_then(|t| t.as_str()) {
+                match element_type {
+                    "Theme" => {
+                        if let Some(arr) = narrative_elements.get_mut("themes").and_then(|v| v.as_array_mut()) {
+                            arr.push(element.clone());
+                        }
+                    }
+                    "Protagonist" => {
+                        if let Some(arr) = narrative_elements.get_mut("protagonists").and_then(|v| v.as_array_mut()) {
+                            arr.push(element.clone());
+                        }
+                    }
+                    "Antagonist" => {
+                        if let Some(arr) = narrative_elements.get_mut("antagonists").and_then(|v| v.as_array_mut()) {
+                            arr.push(element.clone());
+                        }
+                    }
+                    "Secondary" => {
+                        if let Some(arr) = narrative_elements.get_mut("secondaries").and_then(|v| v.as_array_mut()) {
+                            arr.push(element.clone());
+                        }
+                    }
+                    "Scenario" => {
+                        if let Some(arr) = narrative_elements.get_mut("scenarios").and_then(|v| v.as_array_mut()) {
+                            arr.push(element.clone());
+                        }
+                    }
+                    "Procedure" => {
+                        if let Some(arr) = narrative_elements.get_mut("procedures").and_then(|v| v.as_array_mut()) {
+                            arr.push(element.clone());
+                        }
+                    }
+                    "DramaticResource" => {
+                        if let Some(arr) = narrative_elements.get_mut("dramatic_resources").and_then(|v| v.as_array_mut()) {
+                            arr.push(element.clone());
+                        }
+                    }
+                    "SocialPressure" => {
+                        if let Some(arr) = narrative_elements.get_mut("social_pressures").and_then(|v| v.as_array_mut()) {
+                            arr.push(element.clone());
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+    
+    // Migrar desde plots (si existe)
+    if let Some(plots) = v.get("plots").and_then(|v| v.as_array()) {
+        for plot in plots {
+            // Asumir que plots son principalmente themes
+            if let Some(arr) = narrative_elements.get_mut("themes").and_then(|v| v.as_array_mut()) {
+                arr.push(plot.clone());
+            }
+        }
+    }
+    
+    // Guardar narrative_elements en el proyecto
+    v["narrative_elements"] = narrative_elements;
 }
 
 fn save_project_json(body: &str) -> Result<(), String> {
@@ -462,6 +549,110 @@ Devuelve este formato exacto:
   ],
   "warnings": []
 }}"#,
+        action = action,
+        project_context = serde_json::to_string_pretty(project).unwrap_or_default()
+    )
+}
+
+fn prompt_for_narrative_elements(action: &str, project: &Value) -> String {
+    format!(
+        r#"Devuelve SOLO JSON válido. No uses markdown. No expliques nada fuera del JSON.
+
+Estás trabajando para Cadiz12 en la sección de elementos narrativos unificados.
+Acción solicitada: {action}
+
+Contexto del proyecto:
+{project_context}
+
+Devuelve este formato exacto:
+{{
+  "status": "success",
+  "section": "narrative_elements",
+  "action": "{action}",
+  "data": {{
+    "themes": [
+      {{
+        "id": "string",
+        "type": "Theme",
+        "label": "string",
+        "description": "string",
+        "tone": "string",
+        "historical_scope": "string",
+        "time_window": ["string"],
+        "act_bias": ["string"],
+        "stakes_axis": ["string"],
+        "faction_vectors": ["string"],
+        "space_vectors": ["string"]
+      }}
+    ],
+    "protagonists": [
+      {{
+        "id": "string",
+        "type": "Protagonist",
+        "label": "string",
+        "description": "string",
+        "eligible_profiles": ["string"],
+        "eligible_positions": ["string"]
+      }}
+    ],
+    "antagonists": [
+      {{
+        "id": "string",
+        "type": "Antagonist",
+        "label": "string",
+        "description": "string"
+      }}
+    ],
+    "secondaries": [
+      {{
+        "id": "string",
+        "type": "Secondary",
+        "label": "string",
+        "description": "string"
+      }}
+    ],
+    "scenarios": [
+      {{
+        "id": "string",
+        "type": "Scenario",
+        "label": "string",
+        "description": "string"
+      }}
+    ],
+    "procedures": [
+      {{
+        "id": "string",
+        "type": "Procedure",
+        "label": "string",
+        "description": "string",
+        "kind": "string"
+      }}
+    ],
+    "dramatic_resources": [
+      {{
+        "id": "string",
+        "type": "DramaticResource",
+        "label": "string",
+        "description": "string"
+      }}
+    ],
+    "social_pressures": [
+      {{
+        "id": "string",
+        "type": "SocialPressure",
+        "label": "string",
+        "description": "string"
+      }}
+    ]
+  }},
+  "warnings": []
+}}
+
+Reglas:
+- Usa solo IDs que existan en los catálogos o marca como unresolved
+- No inventes enums fuera del vocabulario dado
+- Prioriza coherencia local y causalidad jugable
+- Devuelve entre 3 y 8 elementos por tipo si la acción es de propuesta general"#,
         action = action,
         project_context = serde_json::to_string_pretty(project).unwrap_or_default()
     )
@@ -828,6 +1019,22 @@ fn main() {
                     .unwrap_or("propose");
                 let project = incoming.get("project").cloned().unwrap_or_else(|| json!({}));
                 let response_body = handle_ai_request("plots", "DiseñadorDeStoryElements", action, &project, prompt_for_plots_action);
+                let _ = request.respond(json_response(response_body));
+            }
+            (Method::Post, "/api/ai/narrative-elements") => {
+                let incoming = load_json_body(&mut request);
+                let action = incoming
+                    .get("action")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("generate");
+                let project = incoming.get("project").cloned().unwrap_or_else(|| json!({}));
+                let response_body = handle_ai_request(
+                    "narrative_elements",
+                    "CoordinadorNarrativo",
+                    action,
+                    &project,
+                    prompt_for_narrative_elements,
+                );
                 let _ = request.respond(json_response(response_body));
             }
             _ => {

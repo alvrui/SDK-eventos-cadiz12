@@ -369,6 +369,177 @@ impl SelectionWeights {
     }
 }
 
+/// Elementos narrativos unificados
+/// Combina themes, protagonists, antagonists, secondaries, scenarios, procedures, etc.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NarrativeElements {
+    pub themes: Vec<Theme>,
+    pub protagonists: Vec<ProtagonistArchetype>,
+    pub antagonists: Vec<Antagonist>,
+    pub secondaries: Vec<Secondary>,
+    pub scenarios: Vec<Scenario>,
+    pub procedures: Vec<Procedure>,
+    pub dramatic_resources: Vec<DramaticResource>,
+    pub social_pressures: Vec<SocialPressure>,
+}
+
+impl NarrativeElements {
+    pub fn new() -> Self {
+        Self {
+            themes: vec![],
+            protagonists: vec![],
+            antagonists: vec![],
+            secondaries: vec![],
+            scenarios: vec![],
+            procedures: vec![],
+            dramatic_resources: vec![],
+            social_pressures: vec![],
+        }
+    }
+
+    /// Añadir un tema
+    pub fn with_theme(mut self, theme: Theme) -> Self {
+        self.themes.push(theme);
+        self
+    }
+
+    /// Añadir un protagonista
+    pub fn with_protagonist(mut self, protagonist: ProtagonistArchetype) -> Self {
+        self.protagonists.push(protagonist);
+        self
+    }
+
+    /// Añadir un antagonista
+    pub fn with_antagonist(mut self, antagonist: Antagonist) -> Self {
+        self.antagonists.push(antagonist);
+        self
+    }
+
+    /// Añadir un secundario
+    pub fn with_secondary(mut self, secondary: Secondary) -> Self {
+        self.secondaries.push(secondary);
+        self
+    }
+
+    /// Añadir un escenario
+    pub fn with_scenario(mut self, scenario: Scenario) -> Self {
+        self.scenarios.push(scenario);
+        self
+    }
+
+    /// Añadir un procedimiento
+    pub fn with_procedure(mut self, procedure: Procedure) -> Self {
+        self.procedures.push(procedure);
+        self
+    }
+
+    /// Añadir un recurso dramático
+    pub fn with_dramatic_resource(mut self, resource: DramaticResource) -> Self {
+        self.dramatic_resources.push(resource);
+        self
+    }
+
+    /// Añadir una presión social
+    pub fn with_social_pressure(mut self, pressure: SocialPressure) -> Self {
+        self.social_pressures.push(pressure);
+        self
+    }
+
+    /// Obtener todos los elementos como un vector plano
+    pub fn all_elements(&self) -> Vec<&dyn ScriptElementBase> {
+        let mut all: Vec<&dyn ScriptElementBase> = Vec::new();
+        
+        for theme in &self.themes {
+            all.push(&theme.base);
+        }
+        for protagonist in &self.protagonists {
+            all.push(&protagonist.base);
+        }
+        for antagonist in &self.antagonists {
+            all.push(&antagonist.base);
+        }
+        for secondary in &self.secondaries {
+            all.push(&secondary.base);
+        }
+        for scenario in &self.scenarios {
+            all.push(&scenario.base);
+        }
+        for procedure in &self.procedures {
+            all.push(&procedure.base);
+        }
+        for resource in &self.dramatic_resources {
+            all.push(&resource.base);
+        }
+        for pressure in &self.social_pressures {
+            all.push(&pressure.base);
+        }
+        
+        all
+    }
+
+    /// Validar que todos los elementos tienen IDs únicas
+    pub fn validate_unique_ids(&self) -> Result<(), Vec<String>> {
+        use std::collections::HashSet;
+        
+        let mut errors = Vec::new();
+        let mut ids = HashSet::new();
+        
+        for theme in &self.themes {
+            if !ids.insert(&theme.base.id.0) {
+                errors.push(format!("Duplicate ID: {}", theme.base.id.0));
+            }
+        }
+        
+        for protagonist in &self.protagonists {
+            if !ids.insert(&protagonist.base.id.0) {
+                errors.push(format!("Duplicate ID: {}", protagonist.base.id.0));
+            }
+        }
+        
+        for antagonist in &self.antagonists {
+            if !ids.insert(&antagonist.base.id.0) {
+                errors.push(format!("Duplicate ID: {}", antagonist.base.id.0));
+            }
+        }
+        
+        for secondary in &self.secondaries {
+            if !ids.insert(&secondary.base.id.0) {
+                errors.push(format!("Duplicate ID: {}", secondary.base.id.0));
+            }
+        }
+        
+        for scenario in &self.scenarios {
+            if !ids.insert(&scenario.base.id.0) {
+                errors.push(format!("Duplicate ID: {}", scenario.base.id.0));
+            }
+        }
+        
+        for procedure in &self.procedures {
+            if !ids.insert(&procedure.base.id.0) {
+                errors.push(format!("Duplicate ID: {}", procedure.base.id.0));
+            }
+        }
+        
+        for resource in &self.dramatic_resources {
+            if !ids.insert(&resource.base.id.0) {
+                errors.push(format!("Duplicate ID: {}", resource.base.id.0));
+            }
+        }
+        
+        for pressure in &self.social_pressures {
+            if !ids.insert(&pressure.base.id.0) {
+                errors.push(format!("Duplicate ID: {}", pressure.base.id.0));
+            }
+        }
+        
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -397,5 +568,44 @@ mod tests {
         assert_eq!(weights.w_protagonist, 3.0);
         assert_eq!(weights.w_scenario, 2.0);
         assert_eq!(weights.w_antagonist, 1.5);
+    }
+
+    #[test]
+    fn test_narrative_elements_creation() {
+        let elements = NarrativeElements::new();
+        assert!(elements.themes.is_empty());
+        assert!(elements.protagonists.is_empty());
+        assert!(elements.antagonists.is_empty());
+    }
+
+    #[test]
+    fn test_narrative_elements_with_elements() {
+        let mut elements = NarrativeElements::new();
+        elements = elements.with_theme(Theme::new("theme_1"));
+        elements = elements.with_protagonist(ProtagonistArchetype::new("prot_1"));
+        elements = elements.with_antagonist(Antagonist::new("ant_1"));
+        
+        assert_eq!(elements.themes.len(), 1);
+        assert_eq!(elements.protagonists.len(), 1);
+        assert_eq!(elements.antagonists.len(), 1);
+    }
+
+    #[test]
+    fn test_narrative_elements_validate_unique_ids() {
+        let mut elements = NarrativeElements::new();
+        elements = elements.with_theme(Theme::new("id_1"));
+        elements = elements.with_theme(Theme::new("id_2"));
+        
+        let result = elements.validate_unique_ids();
+        assert!(result.is_ok());
+        
+        let mut elements_with_dup = NarrativeElements::new();
+        elements_with_dup = elements_with_dup.with_theme(Theme::new("id_1"));
+        elements_with_dup = elements_with_dup.with_theme(Theme::new("id_1"));
+        
+        let result = elements_with_dup.validate_unique_ids();
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("Duplicate ID")));
     }
 }
