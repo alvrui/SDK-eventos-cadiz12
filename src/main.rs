@@ -788,6 +788,17 @@ fn main() {
                 let response_body = handle_ai_request("plots", "DiseñadorDeStoryElements", action, &project, prompt_for_plots_action);
                 let _ = request.respond(json_response(response_body));
             }
+            (Method::Get, url) if url.starts_with("/catalogs/") => {
+                let file_path = Path::new("ui/catalogs").join(&url[10..]); // Remove "/catalogs/" prefix
+                if file_path.exists() {
+                    let content = fs::read_to_string(&file_path).unwrap_or_else(|_| String::new());
+                    let response = text_response(200, &content, "text/csv; charset=UTF-8");
+                    let _ = request.respond(response);
+                } else {
+                    let response = text_response(404, "Not Found", "text/plain; charset=UTF-8");
+                    let _ = request.respond(response);
+                }
+            }
             _ => {
                 let response = text_response(404, "Not Found", "text/plain; charset=UTF-8");
                 let _ = request.respond(response);
