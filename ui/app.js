@@ -6,7 +6,9 @@ const state = {
     activePlotId: null,
     storyFilterType: "All",
     activity: [],
-    agents: []
+    agents: [],
+    selectedAgentId: null,
+    selectedAgentName: null
 };
 
 function createDefaultProject() {
@@ -322,17 +324,197 @@ function renderAgents() {
 
     if (!state.agents.length) {
         container.className = "agent-overview empty-state";
-        container.innerHTML = "No se pudieron cargar agentes.";
+        container.innerHTML = `<div>
+            <p>No se pudieron cargar agentes desde <code>secretario.py</code>.</p>
+            <p style="font-size: 0.8em; margin-top: 0.5em; color: var(--text-muted);">
+                Verifica que el servicio esté corriendo en <code>127.0.0.1:8000</code>
+            </p>
+            <button onclick="loadAgents()" class="btn btn-ghost btn-small" style="margin-top: 0.5em;">
+                Reintentar
+            </button>
+        </div>`;
         return;
     }
 
     container.className = "agent-overview";
-    container.innerHTML = state.agents.map((agent) => `
+    container.innerHTML = `<div style="display: flex; flex-wrap: wrap; gap: 0.5em;">
+        ${state.agents.map((agent) => `
         <div class="agent-pill">
             <div class="agent-pill-name">${escapeHtml(agent.nombre || agent.name || "-")}</div>
             <div class="agent-pill-id">${escapeHtml(agent.agent_id || agent.id || "")}</div>
         </div>
-    `).join("");
+    `).join("")}
+    </div>`;
+    
+    // Llenar el selector global de agentes
+    renderAgentSelectors();
+}
+
+function renderAgentSelectors() {
+    const globalSelect = $("#selectedAgent");
+    if (!globalSelect) return;
+    
+    const options = ['<option value="">-- Selecciona un agente --</option>'];
+    state.agents.forEach(agent => {
+        const selected = agent.agent_id === state.selectedAgentId ? 'selected' : '';
+        options.push(`<option value="${escapeHtml(agent.agent_id)}" data-name="${escapeHtml(agent.nombre)}" ${selected}>${escapeHtml(agent.nombre)}</option>`);
+    });
+    globalSelect.innerHTML = options.join("");
+    
+    // Restaurar selección si existe
+    if (state.selectedAgentId) {
+        globalSelect.value = state.selectedAgentId;
+    }
+}
+
+async function saveAgent() {
+    const name = $("#agentName")?.value?.trim() || "";
+    const agentId = $("#agentId")?.value?.trim() || "";
+    const conversationId = $("#agentConversationId")?.value?.trim() || "";
+    
+    if (!name || !agentId) {
+        setStatus("Nombre e ID de agente son obligatorios.", "error");
+        return;
+    }
+    
+    setStatus("Guardando agente...", "info");
+    
+    try {
+        const response = await fetch("http://127.0.0.1:8000/agentes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nombre: name, agent_id: agentId, conversation_id: conversationId })
+        });
+        
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(error || "Error al guardar agente");
+        }
+        
+        await loadAgents();
+        setStatus("Agente guardado correctamente.", "success");
+        
+        // Limpiar formulario
+        $("#agentName").value = "";
+        $("#agentId").value = "";
+        $("#agentConversationId").value = "";
+        
+    } catch (error) {
+        setStatus(`Error guardando agente: ${error.message}`, "error");
+    }
+}
+
+async function deleteAgent() {
+    const agentId = $("#agentId")?.value?.trim() || state.selectedAgentId;
+    
+    if (!agentId) {
+        setStatus("No hay agente seleccionado para eliminar.", "error");
+        return;
+    }
+    
+    if (!confirm(`¿Estás seguro de que quieres eliminar el agente con ID: ${agentId}?`)) {
+        return;
+    }
+    
+    setStatus("Eliminando agente...", "info");
+    
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/agentes/${encodeURIComponent(agentId)}`, {
+            method: "DELETE"
+        });
+        
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(error || "Error al eliminar agente");
+        }
+        
+        await loadAgents();
+        setStatus("Agente eliminado correctamente.", "success");
+        
+        // Limpiar selección
+        state.selectedAgentId = null;
+        state.selectedAgentName = null;
+        $("#agentName").value = "";
+        $("#agentId").value = "";
+        $("#agentConversationId").value = "";
+        
+    } catch (error) {
+        setStatus(`Error eliminando agente: ${error.message}`, "error");
+    }
+}
+
+async function resetAgentConversation() {
+    const agentId = $("#agentId")?.value?.trim() || state.selectedAgentId;
+    
+    if (!agentId) {
+        setStatus("No hay agente seleccionado.", "error");
+        return;
+    }
+    
+    setStatus("Reseteando conversación...", "info");
+    
+    try {
+        const response = await fetch("http://127.0.0.1:8000/agentes/reset_conversation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ agent_id: agentId })
+        });
+        
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(error || "Error al resetear conversación");
+        }
+        
+        await loadAgents();
+        setStatus("Conversación reseteada. El siguiente mensaje creará una nueva.", "success");
+        
+    } catch (error) {
+        setStatus(`Error reseteando conversación: ${error.message}`, "error");
+    }
+}
+
+function selectAgentFromTab(agentId, name) {
+    state.selectedAgentId = agentId;
+    state.selectedAgentName = name;
+    renderAgentSelectors();
+    setStatus(`Agente seleccionado: ${name}`, "success");
+}
+
+function renderAgentsTab() {
+    const container = $("#agentsList");
+    if (!container) return;
+    
+    if (!state.agents.length) {
+        container.className = "card-list empty-state";
+        container.innerHTML = "No hay agentes configurados. Añade uno usando el botón + Añadir Agente.";
+        return;
+    }
+    
+    container.className = "card-list";
+    container.innerHTML = state.agents.map(agent => {
+        const isSelected = agent.agent_id === state.selectedAgentId;
+        return `
+            <article class="entity-card ${isSelected ? 'selected' : ''}" style="cursor: pointer;" 
+                     onclick="selectAgentFromTab('${escapeHtml(agent.agent_id)}', '${escapeHtml(agent.nombre)}')">
+                <div class="entity-card-header">
+                    <div class="entity-card-title-group">
+                        <h4 style="margin: 0;">${escapeHtml(agent.nombre)}</h4>
+                        <span class="badge" style="font-size: 0.75em;">${escapeHtml(agent.agent_id)}</span>
+                    </div>
+                </div>
+                <div class="form-grid two-cols compact-grid" style="margin-top: 0.5em;">
+                    <div class="field">
+                        <label>Conversation ID</label>
+                        <div class="mono" style="font-size: 0.85em;">${escapeHtml(agent.conversation_id || 'Ninguna')}</div>
+                    </div>
+                    <div class="field">
+                        <label>Último uso</label>
+                        <div style="font-size: 0.85em;">${escapeHtml(agent.last_used_at || 'Nunca')}</div>
+                    </div>
+                </div>
+            </article>
+        `;
+    }).join("");
 }
 
 async function loadProject() {
@@ -892,6 +1074,7 @@ function addStoryElement(type = "Theme") {
     syncProjectFromForms();
     state.project.storyelements.push(createEmptyStoryElement(type));
     renderStoryElements();
+    populateStoryElementSelects();
     setStatus("Story element añadido.", "success");
 }
 
@@ -1263,6 +1446,22 @@ async function runAi(section, action) {
         return;
     }
 
+    // Validación para eventos
+    if (section === 'event' && action === 'generate_from_story_element') {
+        const selectedStoryId = document.getElementById('eventStoryElementLink')?.value;
+        if (!selectedStoryId) {
+            setStatus('Debes seleccionar un Story Element antes de generar un evento.', 'error');
+            return;
+        }
+        
+        // Verificar que el story element existe
+        const storyElementExists = state.project.storyelements?.some(se => se.id === selectedStoryId);
+        if (!storyElementExists) {
+            setStatus('El Story Element seleccionado no existe en el proyecto.', 'error');
+            return;
+        }
+    }
+
     setStatus(`Ejecutando IA: ${section} / ${action}...`, "info");
 
     try {
@@ -1302,6 +1501,10 @@ function switchTab(tabId) {
     if (tabId === "raw-json") {
         syncProjectFromForms();
         renderRawJson();
+    }
+    
+    if (tabId === "agents") {
+        renderAgentsTab();
     }
 }
 
@@ -1495,6 +1698,149 @@ function bindReview() {
     }
 }
 
+function bindAgents() {
+    // Selector global de agente
+    const globalAgentSelect = document.getElementById('selectedAgent');
+    if (globalAgentSelect) {
+        globalAgentSelect.addEventListener('change', (event) => {
+            const selectedOption = event.target.options[event.target.selectedIndex];
+            if (selectedOption) {
+                state.selectedAgentId = event.target.value;
+                state.selectedAgentName = selectedOption.getAttribute('data-name') || selectedOption.text;
+                setStatus(`Agente seleccionado: ${state.selectedAgentName}`, 'success');
+            }
+        });
+    }
+    
+    // Botones de la pestaña Agentes
+    const btnRefreshAgents = document.getElementById('btnRefreshAgents');
+    if (btnRefreshAgents) {
+        btnRefreshAgents.addEventListener('click', loadAgents);
+    }
+    
+    const btnAddAgent = document.getElementById('btnAddAgent');
+    if (btnAddAgent) {
+        btnAddAgent.addEventListener('click', () => {
+            // Limpiar formulario para nuevo agente
+            const agentName = document.getElementById('agentName');
+            const agentId = document.getElementById('agentId');
+            const agentConversationId = document.getElementById('agentConversationId');
+            
+            if (agentName) agentName.value = '';
+            if (agentId) agentId.value = '';
+            if (agentConversationId) agentConversationId.value = '';
+            
+            // Habilitar botones
+            const btnSave = document.getElementById('btnSaveAgent');
+            const btnDelete = document.getElementById('btnDeleteAgent');
+            const btnReset = document.getElementById('btnResetConversation');
+            
+            if (btnSave) btnSave.disabled = false;
+            if (btnDelete) btnDelete.disabled = true;
+            if (btnReset) btnReset.disabled = true;
+            
+            setStatus('Listo para añadir un nuevo agente.', 'info');
+        });
+    }
+    
+    const btnSaveAgent = document.getElementById('btnSaveAgent');
+    if (btnSaveAgent) {
+        btnSaveAgent.addEventListener('click', saveAgent);
+    }
+    
+    const btnDeleteAgent = document.getElementById('btnDeleteAgent');
+    if (btnDeleteAgent) {
+        btnDeleteAgent.addEventListener('click', deleteAgent);
+    }
+    
+    const btnResetConversation = document.getElementById('btnResetConversation');
+    if (btnResetConversation) {
+        btnResetConversation.addEventListener('click', resetAgentConversation);
+    }
+    
+    // Buscar agente al hacer clic en la lista
+    const agentsList = document.getElementById('agentsList');
+    if (agentsList) {
+        // El evento onclick ya está en el HTML inline
+    }
+    
+    // Búsqueda de agentes
+    const agentSearch = document.getElementById('agentSearch');
+    if (agentSearch) {
+        agentSearch.addEventListener('input', (event) => {
+            const query = event.target.value.toLowerCase();
+            const container = document.getElementById('agentsList');
+            if (!container) return;
+            
+            const agents = state.agents.filter(agent => 
+                agent.nombre.toLowerCase().includes(query) || 
+                agent.agent_id.toLowerCase().includes(query)
+            );
+            
+            if (!agents.length) {
+                container.className = 'card-list empty-state';
+                container.innerHTML = 'No se encontraron agentes que coincidan con la búsqueda.';
+                return;
+            }
+            
+            container.className = 'card-list';
+            container.innerHTML = agents.map(agent => {
+                const isSelected = agent.agent_id === state.selectedAgentId;
+                return `
+                    <article class="entity-card ${isSelected ? 'selected' : ''}" style="cursor: pointer;" 
+                             onclick="selectAgentFromTab('${escapeHtml(agent.agent_id)}', '${escapeHtml(agent.nombre)}')">
+                        <div class="entity-card-header">
+                            <div class="entity-card-title-group">
+                                <h4 style="margin: 0;">${escapeHtml(agent.nombre)}</h4>
+                                <span class="badge" style="font-size: 0.75em;">${escapeHtml(agent.agent_id)}</span>
+                            </div>
+                        </div>
+                        <div class="form-grid two-cols compact-grid" style="margin-top: 0.5em;">
+                            <div class="field">
+                                <label>Conversation ID</label>
+                                <div class="mono" style="font-size: 0.85em;">${escapeHtml(agent.conversation_id || 'Ninguna')}</div>
+                            </div>
+                            <div class="field">
+                                <label>Último uso</label>
+                                <div style="font-size: 0.85em;">${escapeHtml(agent.last_used_at || 'Nunca')}</div>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        });
+    }
+    
+    // Al seleccionar un agente de la lista, llenar el formulario
+    window.selectAgentFromTab = function(agentId, name) {
+        state.selectedAgentId = agentId;
+        state.selectedAgentName = name;
+        
+        const agent = state.agents.find(a => a.agent_id === agentId);
+        if (agent) {
+            const agentName = document.getElementById('agentName');
+            const agentIdInput = document.getElementById('agentId');
+            const agentConversationId = document.getElementById('agentConversationId');
+            
+            if (agentName) agentName.value = agent.nombre || '';
+            if (agentIdInput) agentIdInput.value = agent.agent_id || '';
+            if (agentConversationId) agentConversationId.value = agent.conversation_id || '';
+            
+            // Habilitar/deshabilitar botones
+            const btnSave = document.getElementById('btnSaveAgent');
+            const btnDelete = document.getElementById('btnDeleteAgent');
+            const btnReset = document.getElementById('btnResetConversation');
+            
+            if (btnSave) btnSave.disabled = false;
+            if (btnDelete) btnDelete.disabled = false;
+            if (btnReset) btnReset.disabled = false;
+        }
+        
+        renderAgentSelectors();
+        setStatus(`Agente seleccionado: ${name}`, 'success');
+    };
+}
+
 function bindGlobalActions() {
     const btnLoadProject = document.getElementById('btnLoadProject');
     if (btnLoadProject) {
@@ -1633,6 +1979,12 @@ async function bootstrap() {
   }
 
   try {
+    await loadAgents();
+  } catch (err) {
+    console.error('[bootstrap] loadAgents failed', err);
+  }
+
+  try {
     bindTabs();
   } catch (err) {
     console.error('[bootstrap] bindTabs failed', err);
@@ -1648,6 +2000,12 @@ async function bootstrap() {
     bindNarrativeForm();
   } catch (err) {
     console.error('[bootstrap] bindNarrativeForm failed', err);
+  }
+
+  try {
+    bindAgents();
+  } catch (err) {
+    console.error('[bootstrap] bindAgents failed', err);
   }
 
   try {
